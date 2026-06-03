@@ -13,6 +13,10 @@ from app.models.department import Department
 from app.models.tender import Tender
 from app.models.category import Category
 from app.models.proposal import TenderProposal
+from app.models.approval import ApprovalWorkflow
+from app.models.notification import Notification
+from app.models.report import Report
+from app.models.supplier_rating import SupplierRating
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

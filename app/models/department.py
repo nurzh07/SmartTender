@@ -11,4 +11,9 @@ class Department(Base):
     budget_limit = Column(Numeric(15, 2), default=0)
     head_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    users = relationship("User", back_populates="department")
+    head = relationship("User", foreign_keys=[head_user_id], uselist=False)
+    users = relationship(
+        "User",
+        back_populates="department",
+        foreign_keys="[User.department_id]",
+    )

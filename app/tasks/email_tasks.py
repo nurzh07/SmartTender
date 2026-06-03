@@ -1,23 +1,46 @@
+import logging
+import smtplib
+from email.mime.text import MIMEText
+
+from app.config import get_settings
 from app.tasks.celery_app import celery_app
 
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+def _send_smtp(to: str, subject: str, body: str) -> bool:
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = settings.SMTP_FROM
+        msg["To"] = to
+
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as server:
+            if settings.SMTP_USER:
+                server.starttls()
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(settings.SMTP_FROM, [to], msg.as_string())
+        return True
+    except Exception as exc:
+        logger.warning("SMTP failed (%s), logging only: %s", exc, subject)
+        return False
+
 
 @celery_app.task
-def send_email_notification(email: str, subject: str, message: str):
-    """Отправка email уведомления (заглушка для демонстрации)"""
-    print(f"Sending email to {email}")
-    print(f"Subject: {subject}")
-    print(f"Message: {message}")
-    # Здесь будет реальная отправка через SMTP или email сервис
-    return {"status": "sent", "email": email}
+def send_email_notification(email: str, subject: str, message: str) -> dict:
+    sent = _send_smtp(email, subject, message)
+    logger.info("Email [%s] to %s: %s", "sent" if sent else "logged", email, subject)
+    if not sent:
+        print(f"[EMAIL] To: {email} | {subject}\n{message}")
+    return {"status": "sent" if sent else "logged", "email": email}
 
 
 @celery_app.task
-def send_tender_notification(tender_id: int, supplier_emails: list):
-    """Отправка уведомления о новом тендере поставщикам"""
-    for email in supplier_emails:
-        send_email_notification.delay(
-            email=email,
-            subject=f"Новый тендер #{tender_id}",
-            message="Опубликован новый тендер. Подайте ваше предложение."
-        )
-    return {"status": "queued", "recipients": len(supplier_emails)}
+def send_password_reset_email(email: str, reset_link: str) -> dict:
+    subject = "SmartTender — парольді қалпына келтіру"
+    message = f"Сілтеме (1 сағат жарамды):\n{reset_link}"
+    sent = _send_smtp(email, subject, message)
+    if not sent:
+        print(f"[RESET] {email}: {reset_link}")
+    return {"status": "sent" if sent else "logged", "email": email}

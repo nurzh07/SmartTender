@@ -13,7 +13,9 @@ from app.core.rbac import require_roles
 from app.database import get_db
 from app.models.tender import Tender, TenderStatus
 from app.models.user import User, UserRole
+from app.models.proposal import TenderProposal
 from app.schemas.tender import TenderCreate, TenderResponse, TenderStatusUpdate, TenderUpdate
+from app.services.notifications import queue_tender_awarded, queue_tender_published
 
 router = APIRouter()
 
@@ -93,9 +95,15 @@ async def get_tenders(
 
 @router.get("/{tender_id}", response_model=TenderResponse)
 async def get_tender(tender_id: int, db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+
     tender = (
         db.query(Tender)
-        .options(selectinload(Tender.category), selectinload(Tender.proposals))
+        .options(
+            selectinload(Tender.category),
+            selectinload(Tender.creator),
+            selectinload(Tender.proposals).joinedload(TenderProposal.supplier)
+        )
         .filter(Tender.id == tender_id)
         .first()
     )
@@ -147,7 +155,22 @@ async def update_tender_status(
     if not tender:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tender not found")
 
+    old_status = tender.status
     tender.status = status_data.status
+
+    if status_data.status == TenderStatus.PUBLISHED and old_status != TenderStatus.PUBLISHED:
+        queue_tender_published(db, tender.id, tender.title)
+
+    if status_data.status == TenderStatus.AWARDED:
+        winner = (
+            db.query(TenderProposal)
+            .filter(TenderProposal.tender_id == tender_id)
+            .order_by(TenderProposal.score.desc())
+            .first()
+        )
+        winner_name = f"Supplier #{winner.supplier_id}" if winner else "N/A"
+        queue_tender_awarded(db, tender.id, tender.title, winner_name)
+
     db.commit()
     db.refresh(tender)
     invalidate_tenders_cache()

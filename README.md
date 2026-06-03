@@ -68,6 +68,7 @@ smarttender/
 |------|----------|--------|
 | 1 | docker-compose up, README, FastAPI каркас | ✅ |
 | 2 | PostgreSQL + миграции, JWT, Redis кэш, CRUD | ✅ |
+| Frontend | React 18 + TypeScript (веб-интерфейс) | ✅ |
 
 Архитектура: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
 Апталық есеп: [docs/WEEK2_REPORT.md](docs/WEEK2_REPORT.md)
@@ -96,8 +97,8 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-4. API: http://localhost:8000
-   - Swagger UI: http://localhost:8000/docs
+4. Веб-қосымша (React): **http://localhost:3000**
+   - API (Swagger): http://localhost:8000/docs
    - Health: http://localhost:8000/health
 
 ### Демо-аккаунты (после seed)

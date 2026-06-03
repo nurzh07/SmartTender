@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+from app.models.enums import pg_enum
 import enum
 
 
@@ -19,11 +20,16 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    role = Column(SQLEnum(UserRole), default=UserRole.EMPLOYEE, nullable=False)
+    role = Column(pg_enum(UserRole, "userrole"), default=UserRole.EMPLOYEE, nullable=False)
     full_name = Column(String)
+    telegram_chat_id = Column(String, nullable=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    department = relationship("Department", back_populates="users")
+    department = relationship(
+        "Department",
+        back_populates="users",
+        foreign_keys=[department_id],
+    )

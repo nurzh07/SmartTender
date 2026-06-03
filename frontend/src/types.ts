@@ -1,0 +1,62 @@
+export type UserRole =
+  | "superadmin"
+  | "procurement_manager"
+  | "department_head"
+  | "employee"
+  | "supplier";
+
+export interface User {
+  id: number;
+  email: string;
+  full_name: string | null;
+  role: UserRole;
+  is_active: boolean;
+  department_id: number | null;
+  created_at: string;
+}
+
+export type TenderStatus = "draft" | "published" | "evaluation" | "awarded" | "closed";
+
+export interface Tender {
+  id: number;
+  title: string;
+  description: string | null;
+  budget: string;
+  deadline: string;
+  status: TenderStatus;
+  category_id: number | null;
+  created_by: number;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface Proposal {
+  id: number;
+  tender_id: number;
+  supplier_id: number;
+  price: string;
+  delivery_days: number;
+  file_url: string | null;
+  score: number;
+  status: string;
+  comment: string | null;
+}
+
+export interface Notification {
+  id: number;
+  type: string;
+  message: string;
+  is_read: boolean;
+  channel: string;
+  sent_at: string;
+}
+
+export interface ApprovalStep {
+  id: number;
+  tender_id: number;
+  step: number;
+  status: string;
+  comment: string | null;
+  approver_id: number | null;
+  approved_at: string | null;
+}

@@ -27,6 +27,31 @@ services:
       timeout: 5s
       retries: 5
 
+  # Опционал: docker compose --profile minio up -d  (USE_MINIO=true)
+  smarttender_minio:
+    profiles: ["minio"]
+    image: minio/minio:latest
+    container_name: smarttender_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  smarttender_frontend:
+    build: ./frontend
+    container_name: smarttender_frontend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    depends_on:
+      smarttender_api:
+        condition: service_healthy
+
   smarttender_api:
     build: .
     container_name: smarttender_api
@@ -39,6 +64,12 @@ services:
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 30
+      APP_PUBLIC_URL: http://localhost:8000
+      UPLOAD_DIR: uploads
+      USE_MINIO: "false"
+      MINIO_ENDPOINT: smarttender_minio:9000
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       smarttender_db:
         condition: service_healthy
@@ -49,11 +80,9 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 40s
 
-  # 3-аптадан кейін: docker compose --profile celery up -d
   smarttender_worker:
-    profiles: ["celery"]
     build: .
     container_name: smarttender_worker
     command: celery -A app.tasks.celery_app worker --loglevel=info
@@ -61,17 +90,16 @@ services:
       DATABASE_URL: postgresql://smarttender:smarttender_pass@smarttender_db:5432/smarttender
       REDIS_URL: redis://smarttender_redis:6379/0
       SECRET_KEY: your-secret-key-change-in-production
-      ALGORITHM: HS256
+      UPLOAD_DIR: uploads
     depends_on:
       smarttender_db:
         condition: service_healthy
       smarttender_redis:
         condition: service_healthy
     volumes:
-      - .:/app
+      - uploads_data:/app/uploads
 
   smarttender_beat:
-    profiles: ["celery"]
     build: .
     container_name: smarttender_beat
     command: celery -A app.tasks.celery_app beat --loglevel=info
@@ -79,12 +107,10 @@ services:
       DATABASE_URL: postgresql://smarttender:smarttender_pass@smarttender_db:5432/smarttender
       REDIS_URL: redis://smarttender_redis:6379/0
     depends_on:
-      smarttender_db:
-        condition: service_healthy
       smarttender_redis:
         condition: service_healthy
-    volumes:
-      - .:/app
 
 volumes:
   postgres_data:
+  minio_data:
+  uploads_data:

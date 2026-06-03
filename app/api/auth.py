@@ -1,9 +1,25 @@
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.schemas.user import UserCreate, UserResponse, LoginRequest, Token, TokenRefresh
-from app.models.user import User
+
+from app.config import get_settings
 from app.core.cache import TTL_USER_SESSION, cache_key_session, cache_set
+from app.core.redis_client import redis_client
+from app.database import get_db
+from app.models.user import User
+from app.schemas.user import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    ResetPasswordRequest,
+    Token,
+    TokenRefresh,
+    UserCreate,
+    UserResponse,
+)
+from app.tasks.email_tasks import send_password_reset_email
+
+settings = get_settings()
 from app.core.security import (
     verify_password,
     get_password_hash,
@@ -107,5 +123,34 @@ async def refresh_token(refresh_data: TokenRefresh, db: Session = Depends(get_db
     return {
         "access_token": access_token,
         "refresh_token": new_refresh_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
     }
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == body.email).first()
+    if not user:
+        return {"message": "If email exists, reset link was sent"}
+
+    token = secrets.token_urlsafe(32)
+    redis_client.setex(f"reset:{token}", 3600, str(user.id))
+    reset_link = f"{settings.APP_PUBLIC_URL}/reset-password?token={token}"
+    send_password_reset_email.delay(user.email, reset_link)
+    return {"message": "If email exists, reset link was sent"}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
+    user_id = redis_client.get(f"reset:{body.token}")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.hashed_password = get_password_hash(body.new_password)
+    db.commit()
+    redis_client.delete(f"reset:{body.token}")
+    return {"message": "Password updated successfully"}
