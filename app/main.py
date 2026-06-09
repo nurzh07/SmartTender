@@ -10,6 +10,7 @@ from app.api import (
     departments,
     integrations,
     notifications,
+    odoo,
     proposals,
     reports,
     suppliers,
@@ -90,6 +91,10 @@ app = FastAPI(
             "name": "integrations",
             "description": "Сыртқы API интеграциялары (Госзакупки.kz)"
         },
+        {
+            "name": "odoo",
+            "description": "Odoo ERP интеграциясы (қызметкерлер синхрондау)"
+        },
     ]
 )
 
@@ -120,6 +125,7 @@ app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 app.include_router(suppliers.router, prefix="/api/suppliers", tags=["suppliers"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
+app.include_router(odoo.router, prefix="/api/odoo", tags=["odoo"])
 
 
 @app.get("/")

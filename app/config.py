@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     GOSZAKUPKI_TIMEOUT: float = 5.0
     GOSZAKUPKI_MAX_RETRIES: int = 3
 
+    # Odoo ERP
+    ODOO_URL: str = "http://localhost:8069"
+    ODOO_DB: str = "smarttender"
+    ODOO_USERNAME: str = "admin"
+    ODOO_PASSWORD: str = ""
+    ODOO_TIMEOUT: float = 10.0
+    ODOO_MAX_RETRIES: int = 3
+
     # File storage
     UPLOAD_DIR: str = "uploads"
     USE_MINIO: bool = False
