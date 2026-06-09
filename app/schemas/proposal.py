@@ -18,6 +18,7 @@ class ProposalResponse(ProposalBase):
     id: int
     tender_id: int
     supplier_id: int
+    supplier_name: str | None = None
     score: int
     status: ProposalStatus
 

@@ -29,6 +29,7 @@ class TenderResponse(TenderBase):
     id: int
     status: TenderStatus
     created_by: int
+    approval_status: str | None = "draft"
     created_at: datetime
     updated_at: datetime | None = None
 

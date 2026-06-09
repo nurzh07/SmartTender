@@ -37,6 +37,18 @@ def send_email_notification(email: str, subject: str, message: str) -> dict:
 
 
 @celery_app.task
+def send_bulk_emails(recipients: list[str], subject: str, message: str) -> dict:
+    """Қызметкерлерге жаппай хат жіберу (фондық режим, main thread бұғаттамайды)."""
+    sent = 0
+    for email in recipients:
+        if _send_smtp(email, subject, message):
+            sent += 1
+        else:
+            logger.info("Bulk email logged for %s: %s", email, subject)
+    return {"status": "completed", "sent": sent, "total": len(recipients)}
+
+
+@celery_app.task
 def send_password_reset_email(email: str, reset_link: str) -> dict:
     subject = "SmartTender — парольді қалпына келтіру"
     message = f"Сілтеме (1 сағат жарамды):\n{reset_link}"

@@ -4,8 +4,8 @@ import { useAuth } from "../context/AuthContext";
 
 export function LoginPage() {
   const { user, loading, login } = useAuth();
-  const [email, setEmail] = useState("manager@smarttender.kz");
-  const [password, setPassword] = useState("manager123");
+  const [email, setEmail] = useState("employee@smarttender.kz");
+  const [password, setPassword] = useState("employee123");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,13 +56,17 @@ export function LoginPage() {
           </button>
         </form>
         <div className="demo-hint">
-          <strong>Демо аккаунттар:</strong>
+          <strong>Демо аккаунттар (5):</strong>
           <br />
-          <code>manager@smarttender.kz</code> / manager123
+          <code>employee@smarttender.kz</code> / employee123 — өтінім жасайды
           <br />
-          <code>employee@smarttender.kz</code> / employee123
+          <code>head@smarttender.kz</code> / head123 — бөлім бекітеді
           <br />
-          <code>supplier@smarttender.kz</code> / supplier123
+          <code>manager@smarttender.kz</code> / manager123 — жариялайды
+          <br />
+          <code>supplier@smarttender.kz</code> / supplier123 — ұсыныс жібереді
+          <br />
+          <code>admin@smarttender.kz</code> / admin123 — толық құқық
         </div>
       </div>
     </div>

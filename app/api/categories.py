@@ -17,7 +17,7 @@ from app.schemas.category import CategoryCreate, CategoryResponse
 router = APIRouter()
 
 
-@router.get("/", response_model=list[CategoryResponse])
+@router.get("", response_model=list[CategoryResponse])
 async def list_categories(response: Response, db: Session = Depends(get_db)):
     cache_key = cache_key_categories()
     cached = cache_get(cache_key)
@@ -33,7 +33,7 @@ async def list_categories(response: Response, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/",
+    "",
     response_model=CategoryResponse,
     status_code=status.HTTP_201_CREATED,
 )

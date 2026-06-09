@@ -120,15 +120,20 @@ async def list_proposals(
 
     if current_user.role == UserRole.SUPPLIER:
         query = query.filter(TenderProposal.supplier_id == current_user.id)
+    elif current_user.role == UserRole.EMPLOYEE:
+        if tender.created_by != current_user.id:
+            return []
     elif current_user.role not in (
         UserRole.SUPERADMIN,
         UserRole.PROCUREMENT_MANAGER,
         UserRole.DEPARTMENT_HEAD,
     ):
-        if tender.created_by != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to view proposals",
-            )
+        return []
 
-    return query.order_by(TenderProposal.score.desc()).all()
+    proposals = query.order_by(TenderProposal.score.desc()).all()
+    result = []
+    for proposal in proposals:
+        item = ProposalResponse.model_validate(proposal)
+        item.supplier_name = proposal.supplier.full_name if proposal.supplier else None
+        result.append(item)
+    return result

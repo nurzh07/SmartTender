@@ -10,7 +10,7 @@ from app.schemas.department import DepartmentCreate, DepartmentResponse, Departm
 router = APIRouter()
 
 
-@router.get("/", response_model=list[DepartmentResponse])
+@router.get("", response_model=list[DepartmentResponse])
 async def list_departments(db: Session = Depends(get_db)):
     departments = (
         db.query(Department)
@@ -22,7 +22,7 @@ async def list_departments(db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/",
+    "",
     response_model=DepartmentResponse,
     status_code=status.HTTP_201_CREATED,
 )

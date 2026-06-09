@@ -38,7 +38,7 @@ async def generate_report(
     return {"task_id": task.id, "status": "queued", "report_type": body.report_type.value}
 
 
-@router.get("/", response_model=list[ReportResponse])
+@router.get("", response_model=list[ReportResponse])
 async def list_reports(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),

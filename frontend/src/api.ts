@@ -1,6 +1,14 @@
-import type { ApprovalStep, Notification, Proposal, Tender, User } from "./types";
+import type { ApprovalStep, Notification, Proposal, Report, ReportType, Tender, User } from "./types";
 
 const API = "/api";
+
+function parseApiError(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => (typeof item === "object" && item && "msg" in item ? String(item.msg) : String(item))).join(", ");
+  }
+  return "Сұрау сәтсіз аяқталды";
+}
 
 function getToken(): string | null {
   return localStorage.getItem("access_token");
@@ -26,7 +34,7 @@ export async function api<T>(
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Request failed");
+    throw new Error(parseApiError(err.detail));
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -94,3 +102,17 @@ export const getNotifications = () => api<Notification[]>("/notifications?unread
 
 export const markNotificationRead = (id: number) =>
   api<Notification>(`/notifications/${id}/read`, { method: "PATCH" });
+
+export const publishTender = (id: number) =>
+  api<Tender>(`/tenders/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "published" }),
+  });
+
+export const getReports = () => api<Report[]>("/reports");
+
+export const generateReport = (report_type: ReportType, period: string) =>
+  api<{ task_id: string; status: string; report_type: string }>("/reports/generate", {
+    method: "POST",
+    body: JSON.stringify({ report_type, period }),
+  });

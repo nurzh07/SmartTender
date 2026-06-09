@@ -31,24 +31,49 @@ class GoszakupkiClient:
                     response = client.request(method, url, headers=self._headers(), **kwargs)
                     response.raise_for_status()
                     return response.json()
+            except httpx.TimeoutException as exc:
+                last_error = exc
+                logger.warning("Goszakupki timeout attempt %s: %s", attempt, exc)
+            except httpx.HTTPStatusError as exc:
+                last_error = exc
+                logger.warning(
+                    "Goszakupki HTTP %s attempt %s: %s",
+                    exc.response.status_code,
+                    attempt,
+                    exc,
+                )
+                if exc.response.status_code >= 500:
+                    continue
+                break
             except Exception as exc:
                 last_error = exc
                 logger.warning("Goszakupki request failed attempt %s: %s", attempt, exc)
 
-        raise ConnectionError(f"Goszakupki API failed after {self.max_retries} retries: {last_error}")
+        raise ConnectionError(
+            f"Goszakupki API failed after {self.max_retries} retries: {last_error}"
+        )
 
     def fetch_open_tenders(self, limit: int = 20) -> list[dict[str, Any]]:
         try:
             data = self._request("GET", "/tenders/open", params={"limit": limit})
             return data.get("items", data.get("data", []))
-        except Exception:
+        except (ConnectionError, httpx.TimeoutException) as exc:
+            logger.error("Goszakupki unavailable, using mock data: %s", exc)
             return _mock_open_tenders(limit)
 
     def sync_tender(self, tender_payload: dict[str, Any]) -> dict[str, Any]:
         try:
             return self._request("POST", "/tenders/sync", json=tender_payload)
-        except Exception as exc:
-            return {"status": "queued_locally", "error": str(exc)}
+        except httpx.TimeoutException as exc:
+            return {"status": "queued_locally", "error": "timeout", "detail": str(exc)}
+        except httpx.HTTPStatusError as exc:
+            return {
+                "status": "queued_locally",
+                "error": f"http_{exc.response.status_code}",
+                "detail": str(exc),
+            }
+        except ConnectionError as exc:
+            return {"status": "queued_locally", "error": "connection_failed", "detail": str(exc)}
 
 
 def _mock_open_tenders(limit: int) -> list[dict[str, Any]]:

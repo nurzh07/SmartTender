@@ -10,7 +10,7 @@ from app.schemas.user import UserResponse
 router = APIRouter()
 
 
-@router.get("/", response_model=list[UserResponse])
+@router.get("", response_model=list[UserResponse])
 async def list_suppliers(db: Session = Depends(get_db)):
     return db.query(User).filter(User.role == UserRole.SUPPLIER, User.is_active.is_(True)).all()
 

@@ -3,11 +3,13 @@
 ## Орындалған тапсырмалар
 
 1. **PostgreSQL** — кестелер, FK, Alembic миграциялары, композиттік индекстер
-2. **JWT auth** — register, login, refresh (access 15 мин, refresh 30 күн)
-3. **RBAC** — рөлдер бойынша endpoint қорғанысы
-4. **Redis кэш** — тендерлер тізімі, санаттар; `X-Cache` заголовғы
-5. **CRUD API** — tenders, proposals, categories, departments, users
-6. **N+1** — `selectinload` тендерлер мен ұсыныстарда
+2. **Триггерлер** — `update_updated_at_column()` (users, tenders, tender_proposals); `log_tender_status_change()` → `tender_audit_log` (миграция `004`)
+3. **Транзакциялар** — `db_transaction()` контекст менеджері; approval workflow және Goszakupki импортында rollback
+4. **JWT auth** — register, login, refresh (access 15 мин, refresh 30 күн)
+5. **RBAC** — рөлдер бойынша endpoint қорғанысы
+6. **Redis кэш** — тендерлер тізімі, санаттар; `X-Cache` заголовғы
+7. **CRUD API** — tenders, proposals, categories, departments, users
+8. **N+1** — `selectinload` тендерлер мен ұсыныстарда
 
 ## Демо тіркелгілер (seed)
 

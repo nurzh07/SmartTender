@@ -19,14 +19,22 @@ async def submit_for_approval(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role not in (UserRole.EMPLOYEE, UserRole.SUPERADMIN):
-        raise HTTPException(status_code=403, detail="Only employee can submit")
+    from app.models.tender import TenderStatus
+
+    allowed_roles = (UserRole.EMPLOYEE, UserRole.PROCUREMENT_MANAGER, UserRole.SUPERADMIN)
+    if current_user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Сіздің рөліңіз бекітуге жіберуге рұқсат етілмеген")
 
     tender = db.query(Tender).filter(Tender.id == tender_id).first()
     if not tender:
-        raise HTTPException(status_code=404, detail="Tender not found")
+        raise HTTPException(status_code=404, detail="Тендер табылмады")
     if tender.created_by != current_user.id and current_user.role != UserRole.SUPERADMIN:
-        raise HTTPException(status_code=403, detail="Not your tender")
+        raise HTTPException(status_code=403, detail="Бұл сіздің өтініміңіз емес")
+    if tender.status != TenderStatus.DRAFT:
+        raise HTTPException(status_code=400, detail="Тек жоба (draft) статусын бекітуге жіберуге болады")
+    approval_state = tender.approval_status or "draft"
+    if approval_state in ("pending_approval", "approved") or approval_state.startswith("pending_step_"):
+        raise HTTPException(status_code=400, detail="Өтінім бекітуге жіберілген")
 
     steps = init_approval_workflow(db, tender)
     return steps

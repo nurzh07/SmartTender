@@ -37,6 +37,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
+    redirect_slashes=False,
     title="SmartTender API",
     description="""
     ## SmartTender — Корпоративтік тендерлерді автоматтандыру платформасы

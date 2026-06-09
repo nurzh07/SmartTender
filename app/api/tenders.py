@@ -24,7 +24,7 @@ def _tender_to_dict(tender: Tender) -> dict:
     return TenderResponse.model_validate(tender).model_dump()
 
 
-@router.post("/", response_model=TenderResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=TenderResponse, status_code=status.HTTP_201_CREATED)
 async def create_tender(
     tender_data: TenderCreate,
     current_user: User = Depends(get_current_active_user),
@@ -50,7 +50,7 @@ async def create_tender(
     return new_tender
 
 
-@router.get("/", response_model=list[TenderResponse])
+@router.get("", response_model=list[TenderResponse])
 async def get_tenders(
     response: Response,
     page: int = Query(1, ge=1),

@@ -2,15 +2,17 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_active_user
+from app.core.rbac import require_roles
 from app.database import get_db
 from app.models.notification import Notification
-from app.models.user import User
-from app.schemas.notification import NotificationResponse
+from app.models.user import User, UserRole
+from app.schemas.notification import BulkEmailRequest, NotificationResponse
+from app.tasks.email_tasks import send_bulk_emails
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[NotificationResponse])
+@router.get("", response_model=list[NotificationResponse])
 async def list_my_notifications(
     unread_only: bool = False,
     current_user: User = Depends(get_current_active_user),
@@ -20,6 +22,19 @@ async def list_my_notifications(
     if unread_only:
         q = q.filter(Notification.is_read.is_(False))
     return q.order_by(Notification.sent_at.desc()).limit(50).all()
+
+
+@router.post("/bulk-email")
+async def queue_bulk_email(
+    data: BulkEmailRequest,
+    _: User = Depends(require_roles(UserRole.SUPERADMIN, UserRole.PROCUREMENT_MANAGER)),
+):
+    task = send_bulk_emails.delay(
+        recipients=[str(email) for email in data.recipients],
+        subject=data.subject,
+        message=data.message,
+    )
+    return {"status": "queued", "task_id": task.id, "recipients": len(data.recipients)}
 
 
 @router.patch("/{notification_id}/read", response_model=NotificationResponse)

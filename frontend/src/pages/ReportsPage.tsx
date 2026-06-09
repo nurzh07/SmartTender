@@ -1,117 +1,137 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
+import { useCallback, useEffect, useState } from "react";
+import { generateReport, getReports } from "../api";
+import { useAuth } from "../context/AuthContext";
+import type { Report, ReportType } from "../types";
 
-interface Report {
-  id: number;
-  report_type: string;
-  period: string;
-  file_url: string;
-  created_at: string;
-}
+const REPORT_LABELS: Record<ReportType, string> = {
+  monthly_tenders_pdf: "Айлық тендер PDF",
+  supplier_ratings_excel: "Жеткізуші рейтингтері Excel",
+  budget_analytics: "Бюджет аналитикасы",
+};
 
 export function ReportsPage() {
+  const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [msg, setMsg] = useState("");
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
+  const canGenerate =
+    user?.role === "procurement_manager" || user?.role === "superadmin";
 
-  const fetchReports = async () => {
+  const loadReports = useCallback(async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch("http://localhost:8000/api/reports/", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      setReports(data);
-    } catch (error) {
-      console.error("Error fetching reports:", error);
+      const data = await getReports();
+      setReports(Array.isArray(data) ? data : []);
+      setError("");
+    } catch (e) {
+      setReports([]);
+      setError(e instanceof Error ? e.message : "Есептерді жүктеу қатесі");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const generateReport = async (type: string) => {
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
+
+  const handleGenerate = async (type: ReportType) => {
+    setBusy(true);
+    setError("");
+    setMsg("");
+    const period = new Date().toISOString().slice(0, 7);
     try {
-      const token = localStorage.getItem("access_token");
-      const period = new Date().toISOString().slice(0, 7);
-      const response = await fetch("http://localhost:8000/api/reports/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ report_type: type, period }),
-      });
-      const data = await response.json();
-      alert(`Есеп құрылды: ${data.task_id}`);
-      fetchReports();
-    } catch (error) {
-      console.error("Error generating report:", error);
+      const result = await generateReport(type, period);
+      setMsg(`Есеп фонда құрылуда (task: ${result.task_id.slice(0, 8)}…)`);
+      // Celery тапсырмасы аяқталғанша бірнеше рет жаңарту
+      for (const delay of [2000, 3000, 5000]) {
+        await new Promise((r) => setTimeout(r, delay));
+        await loadReports();
+      }
+      setMsg("Есеп тізімі жаңартылды");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Есеп құру қатесі");
+    } finally {
+      setBusy(false);
     }
   };
 
-  if (loading) return <div>Жүктелуде...</div>;
-
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Есептер</h1>
-      
-      <div style={{ marginBottom: "20px" }}>
-        <h3>Жаңа есеп құру</h3>
-        <button onClick={() => generateReport("monthly_tenders_pdf")}>
-          Айлық тендер PDF
-        </button>
-        <button onClick={() => generateReport("supplier_ratings_excel")} style={{ marginLeft: "10px" }}>
-          Жеткізуші рейтингтері Excel
-        </button>
-        <button onClick={() => generateReport("budget_analytics")} style={{ marginLeft: "10px" }}>
-          Бюджет аналитикасы
-        </button>
-      </div>
+    <div>
+      <h1 className="page-title">Есептер</h1>
+      <p className="page-sub">PDF, Excel және бюджет аналитикасы (Celery фонда)</p>
 
-      <h3>Есептер тізімі</h3>
-      {reports.length === 0 ? (
-        <p>Есептер жоқ</p>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ border: "1px solid #ddd", padding: "8px" }}>ID</th>
-              <th style={{ border: "1px solid #ddd", padding: "8px" }}>Түрі</th>
-              <th style={{ border: "1px solid #ddd", padding: "8px" }}>Период</th>
-              <th style={{ border: "1px solid #ddd", padding: "8px" }}>Құрылған</th>
-              <th style={{ border: "1px solid #ddd", padding: "8px" }}>Әрекет</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((report) => (
-              <tr key={report.id}>
-                <td style={{ border: "1px solid #ddd", padding: "8px" }}>{report.id}</td>
-                <td style={{ border: "1px solid #ddd", padding: "8px" }}>{report.report_type}</td>
-                <td style={{ border: "1px solid #ddd", padding: "8px" }}>{report.period}</td>
-                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                  {new Date(report.created_at).toLocaleString("kk-KZ")}
-                </td>
-                <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                  {report.file_url && (
-                    <a
-                      href={`http://localhost:8000${report.file_url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Жүктеу
-                    </a>
-                  )}
-                </td>
-              </tr>
+      {canGenerate ? (
+        <div className="card" style={{ marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Жаңа есеп құру</h2>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            {(Object.keys(REPORT_LABELS) as ReportType[]).map((type) => (
+              <button
+                key={type}
+                type="button"
+                className="btn btn-primary"
+                disabled={busy}
+                onClick={() => handleGenerate(type)}
+              >
+                {REPORT_LABELS[type]}
+              </button>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
+      ) : (
+        <div className="card" style={{ marginBottom: "1.5rem" }}>
+          <p style={{ color: "var(--muted)" }}>
+            Есеп құру тек сатып алу менеджері немесе әкімші рөлі үшін қолжетімді.
+          </p>
+        </div>
       )}
+
+      {msg && <p style={{ color: "var(--success)", marginBottom: "1rem" }}>{msg}</p>}
+      {error && <p className="error-msg">{error}</p>}
+
+      <div className="card">
+        <h2 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Есептер тізімі</h2>
+        {loading && <p style={{ color: "var(--muted)" }}>Жүктелуде...</p>}
+        {!loading && reports.length === 0 && (
+          <p style={{ color: "var(--muted)" }}>Есептер жоқ. Жаңа есеп құрыңыз.</p>
+        )}
+        {!loading &&
+          reports.map((report) => (
+            <div
+              key={report.id}
+              style={{
+                padding: "0.85rem",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "1rem",
+              }}
+            >
+              <div>
+                <strong>{REPORT_LABELS[report.report_type] || report.report_type}</strong>
+                <div style={{ color: "var(--muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                  Период: {report.period} ·{" "}
+                  {new Date(report.created_at).toLocaleString("kk-KZ")}
+                </div>
+              </div>
+              {report.file_url ? (
+                <a
+                  href={report.file_url}
+                  className="btn btn-secondary"
+                  style={{ textDecoration: "none", fontSize: "0.85rem" }}
+                  download
+                >
+                  Жүктеу
+                </a>
+              ) : (
+                <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>Файл жоқ</span>
+              )}
+            </div>
+          ))}
+      </div>
     </div>
   );
 }
