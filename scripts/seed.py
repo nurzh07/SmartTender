@@ -18,7 +18,7 @@ from app.models.user import User, UserRole
 
 DEMO_USERS = [
     ("admin@smarttender.kz", "admin123", "Әкімші", UserRole.SUPERADMIN, True),
-    ("manager@smarttender.kz", "manager123", "Сатып алу менеджері", UserRole.PROCUREMENT_MANAGER, True),
+    ("manager@smarttender.kz", "manager123", "Сатып алушы (Buyer)", UserRole.BUYER, True),
     ("head@smarttender.kz", "head123", "Бөлім басшысы", UserRole.DEPARTMENT_HEAD, True),
     ("employee@smarttender.kz", "employee123", "Қызметкер", UserRole.EMPLOYEE, True),
     ("supplier@smarttender.kz", "supplier123", "Жеткізуші", UserRole.SUPPLIER, False),
@@ -83,6 +83,7 @@ def seed() -> None:
                 user.full_name = full_name
                 user.role = role
                 user.is_active = True
+                user.is_verified = True
                 user.department_id = dept.id if in_dept else None
             else:
                 db.add(
@@ -93,6 +94,7 @@ def seed() -> None:
                         role=role,
                         department_id=dept.id if in_dept else None,
                         is_active=True,
+                        is_verified=True,
                     )
                 )
 

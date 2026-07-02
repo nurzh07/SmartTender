@@ -116,3 +116,20 @@ export const generateReport = (report_type: ReportType, period: string) =>
     method: "POST",
     body: JSON.stringify({ report_type, period }),
   });
+
+export const verifyEmail = (token: string) =>
+  api<User>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+
+export const register = (body: {
+  email: string;
+  password: string;
+  full_name?: string;
+  role: "buyer" | "supplier";
+}) =>
+  api<{ message: string; user: User }>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });

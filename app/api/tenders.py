@@ -15,7 +15,12 @@ from app.models.tender import Tender, TenderStatus
 from app.models.user import User, UserRole
 from app.models.proposal import TenderProposal
 from app.schemas.tender import TenderCreate, TenderResponse, TenderStatusUpdate, TenderUpdate
-from app.services.notifications import queue_tender_awarded, queue_tender_published
+from app.services.notifications import (
+    queue_tender_awarded,
+    queue_tender_closed,
+    queue_tender_published,
+    tender_requires_approval,
+)
 
 router = APIRouter()
 
@@ -32,9 +37,8 @@ async def create_tender(
 ):
     allowed = {
         UserRole.EMPLOYEE,
-        UserRole.PROCUREMENT_MANAGER,
+        UserRole.BUYER,
         UserRole.SUPERADMIN,
-        UserRole.DEPARTMENT_HEAD,
     }
     if current_user.role not in allowed:
         raise HTTPException(
@@ -145,9 +149,7 @@ async def update_tender(
 async def update_tender_status(
     tender_id: int,
     status_data: TenderStatusUpdate,
-    current_user: User = Depends(
-        require_roles(UserRole.PROCUREMENT_MANAGER, UserRole.SUPERADMIN)
-    ),
+    current_user: User = Depends(require_roles(UserRole.BUYER, UserRole.SUPERADMIN)),
     db: Session = Depends(get_db),
 ):
     tender = db.query(Tender).filter(Tender.id == tender_id).first()
@@ -155,21 +157,29 @@ async def update_tender_status(
     if not tender:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tender not found")
 
+    if status_data.status == TenderStatus.PUBLISHED and (
+        tender_requires_approval(db, tender)
+        and tender.approval_status != "approved"
+        and current_user.role != UserRole.SUPERADMIN
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tender must complete approval workflow before publishing",
+        )
+
     old_status = tender.status
     tender.status = status_data.status
 
     if status_data.status == TenderStatus.PUBLISHED and old_status != TenderStatus.PUBLISHED:
         queue_tender_published(db, tender.id, tender.title)
 
-    if status_data.status == TenderStatus.AWARDED:
-        winner = (
-            db.query(TenderProposal)
-            .filter(TenderProposal.tender_id == tender_id)
-            .order_by(TenderProposal.score.desc())
-            .first()
-        )
-        winner_name = f"Supplier #{winner.supplier_id}" if winner else "N/A"
-        queue_tender_awarded(db, tender.id, tender.title, winner_name)
+    if status_data.status == TenderStatus.AWARDED and old_status != TenderStatus.AWARDED:
+        queue_tender_awarded(db, tender.id, tender.title)
+
+    if status_data.status == TenderStatus.CLOSED and old_status != TenderStatus.CLOSED:
+        from app.tasks.report_tasks import send_tender_closure_report
+
+        send_tender_closure_report.delay(tender.id)
 
     db.commit()
     db.refresh(tender)

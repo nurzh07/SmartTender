@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/employees")
 async def fetch_employees(
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.SUPERADMIN, UserRole.PROCUREMENT_MANAGER)),
+    _: User = Depends(require_roles(UserRole.SUPERADMIN, UserRole.BUYER)),
 ):
     """Odoo ERP-ден қызметкерлер тізімін алу."""
     try:

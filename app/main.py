@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api import (
     approval,
@@ -21,6 +22,7 @@ from app.api import (
 from app.config import get_settings
 from app.core.middleware import RateLimitMiddleware
 from app.core.redis_client import redis_client
+from app.database import SessionLocal
 from app.services.storage import ensure_upload_dirs
 
 settings = get_settings()
@@ -54,7 +56,7 @@ app = FastAPI(
     
     ### Рөлдер:
     - `superadmin` — Толық құқықтар
-    - `procurement_manager` — Тендер басқару
+    - `buyer` — Тендер басқару
     - `department_head` — Бөлім бекітуі
     - `employee` — Өтінім жасау
     - `supplier` — Ұсыныс жіберу
@@ -142,8 +144,21 @@ async def root():
 @app.get("/health")
 async def health_check():
     redis_ok = False
+    db_ok = False
     try:
         redis_ok = redis_client.ping()
     except Exception:
         redis_ok = False
-    return {"status": "healthy", "redis": redis_ok}
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+    finally:
+        db.close()
+    return {
+        "status": "healthy" if redis_ok and db_ok else "degraded",
+        "redis": redis_ok,
+        "database": db_ok,
+    }

@@ -27,12 +27,28 @@ def send_telegram_message(chat_id: str, text: str) -> dict:
 
 
 @celery_app.task
-def notify_tender_published(tender_id: int, title: str, emails: list, user_ids: list) -> dict:
+def notify_tender_published(tender_id: int, title: str, emails: list[str]) -> dict:
     subject = f"Жаңа тендер: {title}"
-    message = f"Тендер #{tender_id} жарияланды. Ұсыныс жіберіңіз: {settings.APP_PUBLIC_URL}/docs"
+    message = (
+        f"Тендер #{tender_id} «{title}» жарияланды.\n"
+        f"Ұсыныс жіберу: {settings.APP_PUBLIC_URL}/tenders/{tender_id}"
+    )
     for email in emails:
         send_email_notification.delay(email, subject, message)
     return {"status": "queued", "recipients": len(emails)}
+
+
+@celery_app.task
+def notify_proposal_received(
+    buyer_email: str, tender_title: str, supplier_name: str, price: str
+) -> dict:
+    subject = f"Жаңа ұсыныс: {tender_title}"
+    message = (
+        f"«{tender_title}» тендеріне {supplier_name} жаңа ұсыныс жіберді.\n"
+        f"Баға: {price} ₸"
+    )
+    send_email_notification.delay(buyer_email, subject, message)
+    return {"status": "queued", "buyer_email": buyer_email}
 
 
 @celery_app.task
@@ -53,22 +69,36 @@ def notify_approval_result(user_id: int, approved: bool, tender_title: str) -> d
 
 
 @celery_app.task
-def notify_deadline_reminder(tender_id: int, title: str, days_left: int, emails: list) -> dict:
+def notify_deadline_reminder(tender_id: int, title: str, days_left: int, emails: list[str]) -> dict:
     subject = f"Дедлайн {days_left} күн: {title}"
-    message = f"Тендер #{tender_id} аяқталуына {days_left} күн қалды."
+    message = f"Тендер #{tender_id} «{title}» аяқталуына {days_left} күн қалды."
     for email in emails:
         send_email_notification.delay(email, subject, message)
     return {"status": "queued", "days_left": days_left}
 
 
 @celery_app.task
-def notify_tender_awarded(
-    tender_id: int, title: str, winner_name: str, user_ids: list
-) -> dict:
-    message = f"Тендер «{title}» жеңімпазы: {winner_name}"
+def notify_tender_awarded(tender_id: int, title: str, winner_email: str, loser_emails: list[str]) -> dict:
     send_email_notification.delay(
-        email="participants@smarttender.local",
-        subject=f"Нәтиже тендер #{tender_id}",
-        message=message,
+        winner_email,
+        f"Құттықтаймыз! Тендер #{tender_id}",
+        f"«{title}» тендерінде жеңімпаз атандыңыз!",
     )
-    return {"status": "queued"}
+    for email in loser_emails:
+        send_email_notification.delay(
+            email,
+            f"Тендер #{tender_id} нәтижесі",
+            f"«{title}» тендерінде таңдау басқа ұсынысқа түсті. Қатысқаныңыз үшін рахмет.",
+        )
+    return {"status": "queued", "winner": winner_email, "losers": len(loser_emails)}
+
+
+@celery_app.task
+def notify_tender_closed(buyer_email: str, tender_id: int, title: str, report_url: str) -> dict:
+    subject = f"Тендер жабылды: {title}"
+    message = (
+        f"«{title}» (#{tender_id}) тендері жабылды.\n"
+        f"Есеп: {settings.APP_PUBLIC_URL}{report_url}"
+    )
+    send_email_notification.delay(buyer_email, subject, message)
+    return {"status": "queued", "buyer_email": buyer_email}

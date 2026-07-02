@@ -27,7 +27,7 @@ async def list_my_notifications(
 @router.post("/bulk-email")
 async def queue_bulk_email(
     data: BulkEmailRequest,
-    _: User = Depends(require_roles(UserRole.SUPERADMIN, UserRole.PROCUREMENT_MANAGER)),
+    _: User = Depends(require_roles(UserRole.SUPERADMIN, UserRole.BUYER)),
 ):
     task = send_bulk_emails.delay(
         recipients=[str(email) for email in data.recipients],

@@ -6,7 +6,7 @@ from app.models.user import UserRole
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str | None = None
-    role: UserRole = UserRole.EMPLOYEE
+    role: UserRole = UserRole.SUPPLIER
 
 
 class UserCreate(UserBase):
@@ -22,11 +22,21 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     id: int
     is_active: bool
+    is_verified: bool = False
     department_id: int | None = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class RegisterResponse(BaseModel):
+    message: str
+    user: UserResponse
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
 
 
 class Token(BaseModel):

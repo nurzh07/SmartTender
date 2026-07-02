@@ -8,6 +8,7 @@ import enum
 
 class UserRole(str, enum.Enum):
     SUPERADMIN = "superadmin"
+    BUYER = "buyer"
     PROCUREMENT_MANAGER = "procurement_manager"
     DEPARTMENT_HEAD = "department_head"
     EMPLOYEE = "employee"
@@ -25,6 +26,7 @@ class User(Base):
     telegram_chat_id = Column(String, nullable=True)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
     is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

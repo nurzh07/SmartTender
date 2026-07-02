@@ -15,7 +15,7 @@ def import_open_tenders_from_goszakupki(limit: int = 10) -> dict:
     try:
         manager = (
             db.query(User)
-            .filter(User.role == UserRole.PROCUREMENT_MANAGER)
+            .filter(User.role == UserRole.BUYER)
             .first()
         )
         creator_id = manager.id if manager else 1

@@ -57,21 +57,33 @@ smarttender/
 | Роль | Описание |
 |------|----------|
 | Superadmin | Все права, настройка компании, управление пользователями |
-| Procurement Manager | Создание тендеров, утверждение поставщиков, контракты |
+| Procurement Manager | Сатып алушы (Buyer) — тендер жариялау, жеңімпаз таңдау |
 | Department Head | Утверждение/отклонение заявок своего отдела |
 | Employee | Создание заявки на закупку, отслеживание статуса |
 | Supplier | Участие в тендерах, коммерческие предложения |
 
-## Статус реализации (1–2 апта)
+## Статус реализации (1–7 апта)
 
 | Апта | Критерий | Статус |
 |------|----------|--------|
-| 1 | docker-compose up, README, FastAPI каркас | ✅ |
-| 2 | PostgreSQL + миграции, JWT, Redis кэш, CRUD | ✅ |
+| 1 | Архитектура, Docker, бастапқы каркас | ✅ |
+| 2 | PostgreSQL, индекстер/триггер, Redis кэш, CRUD | ✅ |
+| 3 | Celery, background jobs, есеп генерациясы | ✅ |
+| 4 | Сыртқы интеграциялар (Goszakupki/Odoo), webhook | ✅ |
+| 5 | Unit/Integration тесттер, CI quality gate | ✅ |
+| 6 | Production-ready Docker Compose, CD | ✅ |
+| 7 | Қорытынды презентацияға дайындық | ✅ |
 | Frontend | React 18 + TypeScript (веб-интерфейс) | ✅ |
 
 Архитектура: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
-Апталық есеп: [docs/WEEK2_REPORT.md](docs/WEEK2_REPORT.md)
+Апталық есептер:
+- [docs/WEEK1_REPORT.md](docs/WEEK1_REPORT.md)
+- [docs/WEEK2_REPORT.md](docs/WEEK2_REPORT.md)
+- [docs/WEEK3_FEATURES.md](docs/WEEK3_FEATURES.md)
+- [docs/WEEK4_REPORT.md](docs/WEEK4_REPORT.md)
+- [docs/WEEK5_REPORT.md](docs/WEEK5_REPORT.md)
+- [docs/WEEK6_REPORT.md](docs/WEEK6_REPORT.md)
+- [docs/WEEK7_REPORT.md](docs/WEEK7_REPORT.md)
 
 ## Быстрый старт
 
@@ -106,7 +118,9 @@ docker compose up -d --build
 | Email | Пароль | Роль |
 |-------|--------|------|
 | admin@smarttender.kz | admin123 | superadmin |
-| manager@smarttender.kz | manager123 | procurement_manager |
+| manager@smarttender.kz | manager123 | buyer |
+| head@smarttender.kz | head123 | department_head |
+| employee@smarttender.kz | employee123 | employee |
 | supplier@smarttender.kz | supplier123 | supplier |
 
 ### Локальная разработка
@@ -151,6 +165,13 @@ uvicorn app.main:app --reload
 ```bash
 pip install -r requirements.txt
 pytest
+```
+
+### Smoke check
+
+Windows PowerShell:
+```powershell
+.\scripts\smoke-check.ps1
 ```
 
 ## API Эндпоинты
@@ -230,7 +251,7 @@ pytest
 - SQL Injection защита через SQLAlchemy ORM
 - Пароли хешируются через bcrypt
 
-## CI/CD (план)
+## CI/CD
 
 - **CI**: ruff lint → pytest → coverage (минимум 40%)
 - **Build**: Docker image build + push в Docker Hub

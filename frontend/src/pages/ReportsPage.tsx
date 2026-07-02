@@ -18,7 +18,7 @@ export function ReportsPage() {
   const [msg, setMsg] = useState("");
 
   const canGenerate =
-    user?.role === "procurement_manager" || user?.role === "superadmin";
+    user?.role === "buyer" || user?.role === "superadmin";
 
   const loadReports = useCallback(async () => {
     try {

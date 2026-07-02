@@ -66,7 +66,9 @@ def generate_supplier_ratings_excel(self, period: str, user_id: int | None = Non
 def check_deadline_reminders() -> dict:
     from datetime import UTC, timedelta
 
+    from app.models.proposal import TenderProposal
     from app.models.tender import TenderStatus
+    from app.services.notifications import get_buyer_email
     from app.tasks.notification_tasks import notify_deadline_reminder
 
     db = SessionLocal()
@@ -78,19 +80,95 @@ def check_deadline_reminders() -> dict:
             .filter(Tender.status == TenderStatus.PUBLISHED)
             .all()
         )
-        suppliers = db.query(User).filter(User.role == UserRole.SUPPLIER).all()
-        emails = [s.email for s in suppliers]
 
         for t in tenders:
             if not t.deadline:
                 continue
             days = (t.deadline.replace(tzinfo=UTC) - now).days
-            if days in (3, 1):
-                notify_deadline_reminder.delay(t.id, t.title, days, emails)
+            if days not in (3, 1):
+                continue
+
+            emails = set()
+            buyer_email = get_buyer_email(db, t)
+            if buyer_email:
+                emails.add(buyer_email)
+
+            supplier_ids = (
+                db.query(TenderProposal.supplier_id)
+                .filter(TenderProposal.tender_id == t.id)
+                .distinct()
+                .all()
+            )
+            for (supplier_id,) in supplier_ids:
+                supplier = db.query(User).filter(User.id == supplier_id).first()
+                if supplier:
+                    emails.add(supplier.email)
+
+            if emails:
+                notify_deadline_reminder.delay(t.id, t.title, days, sorted(emails))
                 sent += 1
         return {"reminders_sent": sent}
     finally:
         db.close()
+
+
+@celery_app.task
+def send_tender_closure_report(tender_id: int) -> dict:
+    from app.models.proposal import TenderProposal
+    from app.models.tender import TenderStatus
+    from app.services.notifications import get_buyer_email, queue_tender_closed
+
+    db = SessionLocal()
+    try:
+        tender = db.query(Tender).filter(Tender.id == tender_id).first()
+        if not tender:
+            return {"status": "not_found"}
+
+        proposals = (
+            db.query(TenderProposal)
+            .filter(TenderProposal.tender_id == tender_id)
+            .order_by(TenderProposal.score.desc())
+            .all()
+        )
+        content = _build_tender_closure_pdf(tender, proposals)
+        filename = f"tender_{tender_id}_closure.pdf"
+        file_url = save_report_file(filename, content)
+
+        buyer_email = get_buyer_email(db, tender)
+        if buyer_email:
+            queue_tender_closed(db, tender, file_url)
+
+        return {"status": "queued", "file_url": file_url, "buyer_email": buyer_email}
+    finally:
+        db.close()
+
+
+def _build_tender_closure_pdf(tender, proposals: list) -> bytes:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    c.drawString(50, 800, f"SmartTender — Тендер #{tender.id} есебі")
+    c.drawString(50, 780, f"Атауы: {tender.title}")
+    c.drawString(50, 760, f"Статус: {tender.status.value}")
+    c.drawString(50, 740, f"Бюджет: {tender.budget}")
+    y = 710
+    c.drawString(50, y, "Ұсыныстар:")
+    y -= 20
+    for p in proposals[:20]:
+        c.drawString(
+            50,
+            y,
+            f"#{p.supplier_id} — {p.price} ₸ — {p.delivery_days} күн — балл {p.score}",
+        )
+        y -= 18
+        if y < 50:
+            c.showPage()
+            y = 800
+    c.save()
+    buffer.seek(0)
+    return buffer.read()
 
 
 def _build_pdf_bytes(period: str, tenders: list) -> bytes:

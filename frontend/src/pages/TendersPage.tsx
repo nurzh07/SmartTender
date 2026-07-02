@@ -22,7 +22,7 @@ export function TendersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState("");
 
-  const canCreate = user && ["employee", "procurement_manager", "department_head", "superadmin"].includes(user.role);
+  const canCreate = user && ["employee", "buyer", "superadmin"].includes(user.role);
 
   const load = () => {
     setLoading(true);

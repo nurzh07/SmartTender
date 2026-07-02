@@ -62,7 +62,7 @@ export function LoginPage() {
           <br />
           <code>head@smarttender.kz</code> / head123 — бөлім бекітеді
           <br />
-          <code>manager@smarttender.kz</code> / manager123 — жариялайды
+          <code>manager@smarttender.kz</code> / manager123 — buyer, жариялайды
           <br />
           <code>supplier@smarttender.kz</code> / supplier123 — ұсыныс жібереді
           <br />

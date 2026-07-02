@@ -18,9 +18,7 @@ def init_approval_workflow(db: Session, tender: Tender) -> list[ApprovalWorkflow
 
     steps = [
         ApprovalWorkflow(tender_id=tender.id, step=STEP_DEPARTMENT_HEAD, status=ApprovalStatus.PENDING),
-        ApprovalWorkflow(
-            tender_id=tender.id, step=STEP_PROCUREMENT_MANAGER, status=ApprovalStatus.PENDING
-        ),
+        ApprovalWorkflow(tender_id=tender.id, step=STEP_PROCUREMENT_MANAGER, status=ApprovalStatus.PENDING),
     ]
     with db_transaction(db):
         db.add_all(steps)
@@ -71,7 +69,6 @@ def process_approval(
             next_step = get_current_pending_step(db, tender.id)
             if not next_step:
                 tender.approval_status = "approved"
-                tender.status = TenderStatus.PUBLISHED
             else:
                 tender.approval_status = f"pending_step_{next_step.step}"
         else:

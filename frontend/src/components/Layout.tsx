@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: "Әкімші",
-  procurement_manager: "Сатып алу менеджері",
+  buyer: "Сатып алушы (Buyer)",
   department_head: "Бөлім басшысы",
   employee: "Қызметкер",
   supplier: "Жеткізуші",

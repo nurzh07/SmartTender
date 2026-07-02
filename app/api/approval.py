@@ -8,7 +8,7 @@ from app.models.tender import Tender
 from app.models.user import User, UserRole
 from app.schemas.approval import ApprovalAction, ApprovalStepResponse
 from app.services.approval_service import init_approval_workflow, process_approval
-from app.services.notifications import queue_approval_result, queue_tender_published
+from app.services.notifications import queue_approval_result
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ async def submit_for_approval(
 ):
     from app.models.tender import TenderStatus
 
-    allowed_roles = (UserRole.EMPLOYEE, UserRole.PROCUREMENT_MANAGER, UserRole.SUPERADMIN)
+    allowed_roles = (UserRole.EMPLOYEE, UserRole.BUYER, UserRole.SUPERADMIN)
     if current_user.role not in allowed_roles:
         raise HTTPException(status_code=403, detail="Сіздің рөліңіз бекітуге жіберуге рұқсат етілмеген")
 
@@ -63,7 +63,6 @@ async def approve_tender(
         queue_approval_result(db, creator.id, True, tender.title)
 
     if tender.approval_status == "approved":
-        queue_tender_published(db, tender.id, tender.title)
         invalidate_tenders_cache()
 
     return step

@@ -21,7 +21,7 @@ settings = get_settings()
 async def generate_report(
     body: ReportGenerateRequest,
     current_user: User = Depends(
-        require_roles(UserRole.PROCUREMENT_MANAGER, UserRole.SUPERADMIN)
+        require_roles(UserRole.BUYER, UserRole.SUPERADMIN)
     ),
     db: Session = Depends(get_db),
 ):
@@ -46,19 +46,38 @@ async def list_reports(
     return db.query(Report).order_by(Report.created_at.desc()).limit(20).all()
 
 
+def _can_access_report(current_user: User, report: Report) -> bool:
+    return current_user.role in (
+        UserRole.SUPERADMIN,
+        UserRole.BUYER,
+    ) or report.generated_by == current_user.id
+
+
 @router.get("/{report_id}", response_model=ReportResponse)
-async def get_report(report_id: int, db: Session = Depends(get_db)):
+async def get_report(
+    report_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+    if not _can_access_report(current_user, report):
+        raise HTTPException(status_code=403, detail="Not authorized to view this report")
     return report
 
 
 @router.get("/{report_id}/download")
-async def download_report(report_id: int, db: Session = Depends(get_db)):
+async def download_report(
+    report_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report or not report.file_url:
         raise HTTPException(status_code=404, detail="Report file not found")
+    if not _can_access_report(current_user, report):
+        raise HTTPException(status_code=403, detail="Not authorized to download this report")
 
     if report.file_url.startswith("/api/reports/files/"):
         filename = report.file_url.split("/")[-1]
@@ -71,8 +90,19 @@ async def download_report(report_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/files/{filename}")
-async def serve_report_file(filename: str):
-    path = Path(settings.UPLOAD_DIR) / "reports" / filename.replace("..", "")
+async def serve_report_file(
+    filename: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    safe_filename = filename.replace("..", "")
+    report = db.query(Report).filter(Report.file_url == f"/api/reports/files/{safe_filename}").first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report metadata not found")
+    if not _can_access_report(current_user, report):
+        raise HTTPException(status_code=403, detail="Not authorized to access this report file")
+
+    path = Path(settings.UPLOAD_DIR) / "reports" / safe_filename
     if not path.exists():
         raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path, filename=filename)
+    return FileResponse(path, filename=safe_filename)

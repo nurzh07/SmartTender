@@ -1,6 +1,6 @@
 export type UserRole =
   | "superadmin"
-  | "procurement_manager"
+  | "buyer"
   | "department_head"
   | "employee"
   | "supplier";
@@ -11,6 +11,7 @@ export interface User {
   full_name: string | null;
   role: UserRole;
   is_active: boolean;
+  is_verified?: boolean;
   department_id: number | null;
   created_at: string;
 }

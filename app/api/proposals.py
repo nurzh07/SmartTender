@@ -11,6 +11,7 @@ from app.models.tender import Tender, TenderStatus
 from app.models.user import User, UserRole
 from app.schemas.proposal import ProposalCreate, ProposalResponse
 from app.services.scoring import calculate_proposal_score, get_supplier_avg_rating, recalculate_tender_scores
+from app.services.notifications import queue_proposal_received
 from app.services.storage import save_proposal_file
 
 router = APIRouter()
@@ -99,6 +100,7 @@ def _create_proposal(
     db.refresh(proposal)
     recalculate_tender_scores(db, tender_id)
     db.refresh(proposal)
+    queue_proposal_received(db, tender, current_user, str(proposal_data.price))
     return proposal
 
 
@@ -125,7 +127,7 @@ async def list_proposals(
             return []
     elif current_user.role not in (
         UserRole.SUPERADMIN,
-        UserRole.PROCUREMENT_MANAGER,
+        UserRole.BUYER,
         UserRole.DEPARTMENT_HEAD,
     ):
         return []

@@ -16,7 +16,7 @@ router = APIRouter()
 @router.post("/goszakupki/import")
 async def trigger_goszakupki_import(
     limit: int = 10,
-    _: User = Depends(require_roles(UserRole.PROCUREMENT_MANAGER, UserRole.SUPERADMIN)),
+    _: User = Depends(require_roles(UserRole.BUYER, UserRole.SUPERADMIN)),
 ):
     task = import_open_tenders_from_goszakupki.delay(limit=limit)
     return {"status": "queued", "task_id": task.id}
@@ -25,7 +25,7 @@ async def trigger_goszakupki_import(
 @router.get("/goszakupki/preview")
 async def preview_goszakupki_tenders(
     limit: int = 5,
-    _: User = Depends(require_roles(UserRole.PROCUREMENT_MANAGER, UserRole.SUPERADMIN)),
+    _: User = Depends(require_roles(UserRole.BUYER, UserRole.SUPERADMIN)),
 ):
     client = GoszakupkiClient()
     return {"items": client.fetch_open_tenders(limit=limit)}
@@ -35,7 +35,7 @@ async def preview_goszakupki_tenders(
 async def sync_tender_to_goszakupki(
     tender_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.PROCUREMENT_MANAGER, UserRole.SUPERADMIN)),
+    _: User = Depends(require_roles(UserRole.BUYER, UserRole.SUPERADMIN)),
 ):
     tender = db.query(Tender).filter(Tender.id == tender_id).first()
     if not tender:

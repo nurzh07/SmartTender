@@ -15,7 +15,7 @@ import type { ApprovalStep, Proposal, Tender, UserRole } from "../types";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   superadmin: "Әкімші",
-  procurement_manager: "Сатып алу менеджері",
+  buyer: "Сатып алушы (Buyer)",
   department_head: "Бөлім басшысы",
   employee: "Қызметкер",
   supplier: "Жеткізуші",
@@ -28,7 +28,7 @@ function isPendingApproval(tender: Tender) {
 
 function canViewProposals(userRole: UserRole | undefined, tender: Tender, userId?: number) {
   if (!userRole || !userId) return false;
-  if (["superadmin", "procurement_manager", "department_head"].includes(userRole)) return true;
+  if (["superadmin", "buyer", "department_head"].includes(userRole)) return true;
   if (userRole === "employee") return tender.created_by === userId;
   if (userRole === "supplier") return tender.status === "published";
   return false;
@@ -36,13 +36,7 @@ function canViewProposals(userRole: UserRole | undefined, tender: Tender, userId
 
 function canSubmit(userRole: UserRole | undefined, tender: Tender, userId?: number) {
   if (!userRole || !userId || tender.status !== "draft" || isPendingApproval(tender)) return false;
-  if (!["employee", "procurement_manager", "superadmin"].includes(userRole)) return false;
-  return userRole === "superadmin" || tender.created_by === userId;
-}
-
-function canPublish(userRole: UserRole | undefined, tender: Tender, userId?: number) {
-  if (!userRole || tender.status !== "draft") return false;
-  if (!["procurement_manager", "superadmin"].includes(userRole)) return false;
+  if (!["employee", "buyer", "superadmin"].includes(userRole)) return false;
   return userRole === "superadmin" || tender.created_by === userId;
 }
 
@@ -51,7 +45,17 @@ function canApprove(userRole: UserRole | undefined, steps: ApprovalStep[]) {
   if (!pending || !userRole) return false;
   if (userRole === "superadmin") return true;
   if (pending.step === 1) return userRole === "department_head";
-  if (pending.step === 2) return userRole === "procurement_manager";
+  if (pending.step === 2) return userRole === "buyer";
+  return false;
+}
+
+function canPublish(userRole: UserRole | undefined, tender: Tender, userId?: number) {
+  if (!userRole || !userId || tender.status !== "draft") return false;
+  if (!["buyer", "superadmin"].includes(userRole)) return false;
+  if (userRole === "superadmin") return true;
+  const approval = tender.approval_status || "draft";
+  if (approval === "approved") return true;
+  if (approval === "draft" && tender.created_by === userId) return true;
   return false;
 }
 
@@ -130,8 +134,8 @@ export function TenderDetailPage() {
 
   const isOwner = user?.id === tender.created_by;
   const showSubmit = canSubmit(user?.role, tender, user?.id);
-  const showPublish = canPublish(user?.role, tender, user?.id);
   const showApprove = canApprove(user?.role, approval);
+  const showPublish = canPublish(user?.role, tender, user?.id);
   const showProposalForm = user?.role === "supplier" && tender.status === "published";
   const showProposals = canViewProposals(user?.role, tender, user?.id);
 
@@ -190,9 +194,9 @@ export function TenderDetailPage() {
               type="button"
               className="btn btn-primary"
               disabled={busy}
-              onClick={() => runAction(() => publishTender(tenderId), "Тендер жарияланды")}
+              onClick={() => runAction(() => publishTender(tenderId), "Тендер жарияланды!")}
             >
-              Жариялау (бекітусіз)
+              Жариялау
             </button>
           )}
           {showApprove && (
@@ -217,9 +221,15 @@ export function TenderDetailPage() {
           )}
         </div>
 
-        {!showSubmit && !showPublish && !showApprove && user?.role === "employee" && tender.status === "draft" && !isOwner && (
+        {!showSubmit && !showApprove && user?.role === "employee" && tender.status === "draft" && !isOwner && (
           <p style={{ marginTop: "1rem", color: "var(--muted)", fontSize: "0.9rem" }}>
             Бұл өтінім сізге тиесілі емес — тек өз өтініміңізді бекітуге жібере аласыз.
+          </p>
+        )}
+
+        {user?.role === "buyer" && tender.status === "draft" && !showApprove && !showPublish && (
+          <p style={{ marginTop: "1rem", color: "var(--muted)", fontSize: "0.9rem" }}>
+            Жариялау approval workflow толық аяқталғаннан кейін қолжетімді.
           </p>
         )}
 
@@ -241,7 +251,7 @@ export function TenderDetailPage() {
               }}
             >
               <span>
-                Қадам {s.step}: {s.step === 1 ? "Бөлім басшысы" : "Сатып алу менеджері"}
+                Қадам {s.step}: {s.step === 1 ? "Бөлім басшысы" : "Сатып алушы (Buyer)"}
               </span>
               <span className={`badge badge-${s.status === "approved" ? "awarded" : s.status === "rejected" ? "closed" : "draft"}`}>
                 {s.status}

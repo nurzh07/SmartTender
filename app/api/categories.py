@@ -41,7 +41,7 @@ async def create_category(
     category_data: CategoryCreate,
     db: Session = Depends(get_db),
     _: User = Depends(
-        require_roles(UserRole.SUPERADMIN, UserRole.PROCUREMENT_MANAGER)
+        require_roles(UserRole.SUPERADMIN, UserRole.BUYER)
     ),
 ):
     existing = db.query(Category).filter(Category.name == category_data.name).first()
