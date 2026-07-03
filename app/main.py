@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.api import (
+    analytics,
     approval,
     auth,
     categories,
@@ -12,10 +13,12 @@ from app.api import (
     integrations,
     notifications,
     odoo,
+    payments,
     proposals,
     reports,
     suppliers,
     tenders,
+    telegram,
     users,
     webhooks,
 )
@@ -43,17 +46,19 @@ app = FastAPI(
     title="SmartTender API",
     description="""
     ## SmartTender — Корпоративтік тендерлерді автоматтандыру платформасы
-    
+
     Бұл API Қазақстан компанияларының ішкі сатып алу және тендер процестерін толық цифрландыруға арналған.
-    
+
     ### Негізгі мүмкіндіктер:
     - **Аутентификация**: JWT access + refresh токендері, RBAC (5 рөл)
     - **Тендер**: CRUD, статус басқару, бекіту workflow
     - **Ұсыныстар**: Жеткізушілердің коммерциялық ұсыныстары
     - **Хабарландыру**: Email + Telegram арқылы автоматты хабарламалар
     - **Есептер**: PDF, Excel, бюджет аналитикасы
-    - **Интеграция**: Госзакупки.kz API
-    
+    - **Интеграция**: Госзакупки.kz API, egov.kz (БИН верификация)
+    - **Аналитика**: Buyer/Supplier/Admin дашбордтары, Redis кэш
+    - **Төлем**: Stripe депозит жүйесі
+
     ### Рөлдер:
     - `superadmin` — Толық құқықтар
     - `buyer` — Тендер басқару
@@ -61,44 +66,24 @@ app = FastAPI(
     - `employee` — Өтінім жасау
     - `supplier` — Ұсыныс жіберу
     """,
-    version="2.0.0",
+    version="3.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_tags=[
-        {
-            "name": "auth",
-            "description": "Аутентификация және авторизация (JWT, RBAC)"
-        },
-        {
-            "name": "tenders",
-            "description": "Тендерлер CRUD, статус басқару, кэштеу"
-        },
-        {
-            "name": "proposals",
-            "description": "Жеткізушілердің ұсыныстары"
-        },
-        {
-            "name": "approval",
-            "description": "Тендер бекіту workflow"
-        },
-        {
-            "name": "reports",
-            "description": "Есептер генерациясы (PDF, Excel, аналитика)"
-        },
-        {
-            "name": "notifications",
-            "description": "Хабарландырулар"
-        },
-        {
-            "name": "integrations",
-            "description": "Сыртқы API интеграциялары (Госзакупки.kz)"
-        },
-        {
-            "name": "odoo",
-            "description": "Odoo ERP интеграциясы (қызметкерлер синхрондау)"
-        },
-    ]
+        {"name": "auth", "description": "Аутентификация және авторизация (JWT, RBAC)"},
+        {"name": "tenders", "description": "Тендерлер CRUD, статус басқару, кэштеу"},
+        {"name": "proposals", "description": "Жеткізушілердің ұсыныстары"},
+        {"name": "approval", "description": "Тендер бекіту workflow"},
+        {"name": "analytics", "description": "Аналитика дашборды (Buyer/Supplier/Admin)"},
+        {"name": "payments", "description": "Stripe депозит жүйесі"},
+        {"name": "telegram", "description": "Telegram аккаунтын байланыстыру"},
+        {"name": "webhooks", "description": "Сыртқы webhook'тар (Telegram, Stripe, Goszakupki)"},
+        {"name": "reports", "description": "Есептер генерациясы (PDF, Excel, аналитика)"},
+        {"name": "notifications", "description": "Хабарландырулар"},
+        {"name": "integrations", "description": "Сыртқы API интеграциялары (Госзакупки.kz)"},
+        {"name": "odoo", "description": "Odoo ERP интеграциясы (қызметкерлер синхрондау)"},
+    ],
 )
 
 app.add_middleware(RateLimitMiddleware)
@@ -116,6 +101,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Core ─────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(tenders.router, prefix="/api/tenders", tags=["tenders"])
@@ -127,17 +113,25 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["not
 app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 app.include_router(suppliers.router, prefix="/api/suppliers", tags=["suppliers"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
-app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
 app.include_router(odoo.router, prefix="/api/odoo", tags=["odoo"])
+
+# ── New features ─────────────────────────────────────────────
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
+app.include_router(telegram.router, prefix="/api/telegram", tags=["telegram"])
+app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
 
 
 @app.get("/")
 async def root():
     return {
         "message": "SmartTender API",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "docs": "/docs",
-        "modules": ["auth", "tenders", "approval", "notifications", "reports", "goszakupki"],
+        "modules": [
+            "auth", "tenders", "approval", "notifications", "reports",
+            "goszakupki", "analytics", "payments", "telegram",
+        ],
     }
 
 
@@ -161,4 +155,5 @@ async def health_check():
         "status": "healthy" if redis_ok and db_ok else "degraded",
         "redis": redis_ok,
         "database": db_ok,
+        "version": "3.0.0",
     }

@@ -25,8 +25,9 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
       "Нәтиже мен статусты бақылау",
     ],
     nav: [
-      { to: "/", label: "Басты бет", end: true },
-      { to: "/tenders", label: "Ашық тендерлер" },
+      { to: "/", label: "🏠 Басты бет", end: true },
+      { to: "/tenders", label: "📋 Ашық тендерлер" },
+      { to: "/analytics", label: "📊 Аналитика" },
     ],
   },
   buyer: {
@@ -40,9 +41,10 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
       "Есептерді генерациялау",
     ],
     nav: [
-      { to: "/", label: "Басты бет", end: true },
-      { to: "/tenders", label: "Тендерлер" },
-      { to: "/reports", label: "Есептер" },
+      { to: "/", label: "🏠 Басты бет", end: true },
+      { to: "/tenders", label: "📋 Тендерлер" },
+      { to: "/analytics", label: "📊 Аналитика" },
+      { to: "/reports", label: "📄 Есептер" },
     ],
   },
   employee: {
@@ -98,11 +100,12 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
       "Есептер мен хабарламалар",
     ],
     nav: [
-      { to: "/", label: "Басты бет", end: true },
-      { to: "/users", label: "Пайдаланушылар" },
-      { to: "/tenders", label: "Тендерлер" },
-      { to: "/reports", label: "Есептер" },
-      { to: "/notifications", label: "Хабарламалар" },
+      { to: "/", label: "🏠 Басты бет", end: true },
+      { to: "/users", label: "👥 Пайдаланушылар" },
+      { to: "/tenders", label: "📋 Тендерлер" },
+      { to: "/analytics", label: "📊 Аналитика" },
+      { to: "/reports", label: "📄 Есептер" },
+      { to: "/notifications", label: "🔔 Хабарламалар" },
     ],
   },
 };

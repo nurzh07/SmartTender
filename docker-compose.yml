@@ -43,18 +43,6 @@ services:
     volumes:
       - minio_data:/data
 
-  smarttender_mailhog:
-    image: mailhog/mailhog:v1.0.1
-    container_name: smarttender_mailhog
-    ports:
-      - "1025:1025"
-      - "8025:8025"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8025/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   smarttender_frontend:
     build: ./frontend
     container_name: smarttender_frontend
@@ -88,6 +76,13 @@ services:
       UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
       USE_MINIO: ${USE_MINIO:-false}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-smarttender_minio:9000}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      EGOV_API_URL: ${EGOV_API_URL:-https://stat.gov.kz/api/legal/rest/names/bin}
+      EGOV_API_TIMEOUT: ${EGOV_API_TIMEOUT:-5.0}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
@@ -118,6 +113,9 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@smarttender.kz}
       UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      EGOV_API_URL: ${EGOV_API_URL:-https://stat.gov.kz/api/legal/rest/names/bin}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
     depends_on:
       smarttender_db:
         condition: service_healthy
@@ -138,6 +136,26 @@ services:
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
       UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
     depends_on:
+      smarttender_redis:
+        condition: service_healthy
+
+  # ── NEW: Telegram Bot polling service ──────────────────────
+  smarttender_bot:
+    build: .
+    container_name: smarttender_bot
+    command: python -m app.tasks.telegram_bot_runner
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://smarttender:smarttender_pass@smarttender_db:5432/smarttender}
+      REDIS_URL: ${REDIS_URL:-redis://smarttender_redis:6379/0}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:3000}
+    restart: unless-stopped
+    depends_on:
+      smarttender_db:
+        condition: service_healthy
       smarttender_redis:
         condition: service_healthy
 

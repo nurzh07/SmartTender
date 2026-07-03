@@ -46,7 +46,11 @@ def _deliver_email(to: str, subject: str, body: str) -> dict[str, Any]:
     sent, reason = _send_smtp(to, subject, body)
     logger.info("Email [%s] to %s: %s", "sent" if sent else "logged", to, subject)
     if not sent:
-        print(f"[EMAIL] To: {to} | {subject}\n{body}")
+        print(f"\n{'='*60}")
+        print(f"[EMAIL LOG] To: {to}")
+        print(f"[EMAIL LOG] Subject: {subject}")
+        print(f"[EMAIL LOG] Body:\n{body}")
+        print(f"{'='*60}\n")
     return {
         "status": "sent" if sent else "logged",
         "email": to,

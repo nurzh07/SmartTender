@@ -61,7 +61,47 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         full_name=user_data.full_name,
         role=user_data.role,
         is_verified=False,
+        bin=user_data.bin,
+        bin_verified=False,
+        company_official_name=user_data.company_official_name,
     )
+
+    # ── BIN Verification ──────────────────────────────────────
+    if user_data.bin:
+        try:
+            from app.services.bin_verification import verify_bin
+            from datetime import datetime as dt
+
+            bin_result = await verify_bin(user_data.bin)
+            if bin_result["valid"]:
+                new_user.bin_verified = True
+                new_user.company_official_name = bin_result["company_name"]
+                # Parse registration date if available
+                if bin_result["registration_date"]:
+                    try:
+                        new_user.company_registration_date = dt.strptime(
+                            bin_result["registration_date"], "%Y-%m-%d"
+                        ).date()
+                    except:
+                        pass
+                new_user.company_status = bin_result["company_status"]
+                new_user.bin_verified_at = dt.utcnow()
+            else:
+                # BIN not found in government registry
+                if bin_result["error"] and ("табылмады" in bin_result["error"] or "not found" in bin_result["error"].lower()):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="БИН табылмады — мемлекеттік тізілімде мұндай БИН жоқ",
+                    )
+                # API timeout / down → allow registration, mark as unverified
+                new_user.bin_verified = False
+        except HTTPException:
+            raise
+        except Exception as e:
+            # API error - allow registration but mark as unverified
+            logger.error(f"BIN verification failed: {e}")
+            new_user.bin_verified = False
+    # ──────────────────────────────────────────────────────────
 
     db.add(new_user)
     db.commit()
@@ -76,6 +116,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         message="Registration successful. Check your email to verify your account.",
         user=new_user,
     )
+
 
 
 @router.post("/verify-email", response_model=UserResponse)

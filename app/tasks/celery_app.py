@@ -14,6 +14,7 @@ celery_app = Celery(
         "app.tasks.notification_tasks",
         "app.tasks.report_tasks",
         "app.tasks.goszakupki_tasks",
+        "app.tasks.bin_tasks",
     ],
 )
 
@@ -24,6 +25,7 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     beat_schedule={
+        # ── Reports ──────────────────────────────────────────────
         "deadline-reminders-daily": {
             "task": "app.tasks.report_tasks.check_deadline_reminders",
             "schedule": crontab(hour=9, minute=0),
@@ -43,10 +45,16 @@ celery_app.conf.update(
             "schedule": crontab(day_of_month=1, hour=8, minute=0),
             "kwargs": {"period": "auto", "user_id": None},
         },
+        # ── Goszakupki ───────────────────────────────────────────
         "goszakupki-import-daily": {
             "task": "app.tasks.goszakupki_tasks.import_open_tenders_from_goszakupki",
             "schedule": crontab(hour=3, minute=0),
             "kwargs": {"limit": 20},
+        },
+        # ── BIN Verification retry ───────────────────────────────
+        "bin-verification-retry-daily": {
+            "task": "app.tasks.bin_tasks.retry_failed_bin_verifications",
+            "schedule": crontab(hour=10, minute=0),
         },
     },
 )

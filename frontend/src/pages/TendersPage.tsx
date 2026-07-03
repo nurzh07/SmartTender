@@ -1,7 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTender, getTenders } from "../api";
+import { createTender, getTenders, deleteTender } from "../api";
 import { RoleBanner } from "../components/RoleBanner";
+import { SkeletonRow } from "../components/Skeleton";
+import { ConfirmModal } from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 import {
   canCreateTender,
@@ -112,9 +114,18 @@ export function TendersPage() {
       </div>
 
       {error && <p className="error-msg">{error}</p>}
-      {loading && <p style={{ color: "var(--muted)" }}>Жүктелуде...</p>}
+      {loading && (
+        <div className="tender-list">
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </div>
+      )}
 
-      <div className="tender-list">
+      {!loading && (
+        <div className="tender-list">
         {tenders.map((t) => (
           <div
             key={t.id}
@@ -123,24 +134,71 @@ export function TendersPage() {
             onKeyDown={(e) => e.key === "Enter" && navigate(`/tenders/${t.id}`)}
             role="button"
             tabIndex={0}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              gap: "1rem",
+              alignItems: "center",
+            }}
           >
             <div>
-              <strong>{t.title}</strong>
-              <div style={{ color: "var(--muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>
-                {t.description?.slice(0, 80) || "—"}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "0.35rem" }}>
-                {Number(t.budget).toLocaleString("kk-KZ")} ₸ · Дедлайн:{" "}
-                {new Date(t.deadline).toLocaleDateString("kk-KZ")}
-                {t.approval_status && t.approval_status !== "draft" && (
-                  <> · Бекіту: {t.approval_status}</>
-                )}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
+                <span style={{ fontSize: "1.5rem" }}>
+                  {t.status === "published" ? "📋" : 
+                   t.status === "draft" ? "📝" :
+                   t.status === "evaluation" ? "⚖️" :
+                   t.status === "awarded" ? "🏆" :
+                   t.status === "closed" ? "🔒" : "📄"}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <strong style={{ fontSize: "1rem", fontWeight: 600 }}>{t.title}</strong>
+                  <div style={{ 
+                    color: "var(--text-secondary)", 
+                    fontSize: "0.85rem", 
+                    marginTop: "0.35rem",
+                    lineHeight: 1.4
+                  }}>
+                    {t.description?.slice(0, 100) || "Сипаттама жоқ"}
+                  </div>
+                  <div style={{ 
+                    display: "flex", 
+                    gap: "1rem", 
+                    fontSize: "0.8rem", 
+                    color: "var(--muted)", 
+                    marginTop: "0.5rem",
+                    flexWrap: "wrap"
+                  }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                      💰 {Number(t.budget).toLocaleString("kk-KZ")} ₸
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                      📅 {new Date(t.deadline).toLocaleDateString("kk-KZ")}
+                    </span>
+                    {t.approval_status && t.approval_status !== "draft" && (
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                        ✋ {t.approval_status}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-            <span className={`badge badge-${t.status as TenderStatus}`}>{t.status}</span>
+            <span 
+              className={`badge badge-${t.status as TenderStatus}`}
+              style={{ 
+                padding: "0.35rem 0.75rem",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em"
+              }}
+            >
+              {t.status}
+            </span>
           </div>
         ))}
       </div>
+      )}
 
       {!loading && tenders.length === 0 && (
         <p style={{ color: "var(--muted)", textAlign: "center", padding: "2rem" }}>

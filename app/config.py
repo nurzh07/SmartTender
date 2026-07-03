@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     GOSZAKUPKI_TIMEOUT: float = 5.0
     GOSZAKUPKI_MAX_RETRIES: int = 3
 
+    # BIN verification (stat.gov.kz)
+    EGOV_API_URL: str = "https://stat.gov.kz/api/legal/rest/names/bin"
+    EGOV_API_TIMEOUT: float = 5.0
+
+    # Stripe payments
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+
     # Odoo ERP
     ODOO_URL: str = "http://localhost:8069"
     ODOO_DB: str = "smarttender"

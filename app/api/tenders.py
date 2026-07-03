@@ -172,6 +172,12 @@ async def update_tender_status(
 
     if status_data.status == TenderStatus.PUBLISHED and old_status != TenderStatus.PUBLISHED:
         queue_tender_published(db, tender.id, tender.title)
+        # Telegram: notify all suppliers
+        from app.tasks.notification_tasks import notify_tender_published as tg_notify_published
+        from app.services.notifications import get_supplier_users
+        suppliers = get_supplier_users(db)
+        supplier_emails = [u.email for u in suppliers if u.is_verified]
+        tg_notify_published.delay(tender.id, tender.title, float(tender.budget), supplier_emails)
 
     if status_data.status == TenderStatus.AWARDED and old_status != TenderStatus.AWARDED:
         queue_tender_awarded(db, tender.id, tender.title)

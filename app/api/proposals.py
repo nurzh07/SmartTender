@@ -101,6 +101,22 @@ def _create_proposal(
     recalculate_tender_scores(db, tender_id)
     db.refresh(proposal)
     queue_proposal_received(db, tender, current_user, str(proposal_data.price))
+
+    # Telegram: notify buyer
+    from app.tasks.notification_tasks import notify_proposal_received as tg_notify_proposal
+    from app.models.user import User as UserModel
+    buyer = db.query(UserModel).filter(UserModel.id == tender.created_by).first()
+    buyer_chat_id = buyer.telegram_chat_id if buyer else None
+    buyer_email_addr = buyer.email if buyer else ""
+    if buyer_email_addr:
+        tg_notify_proposal.delay(
+            buyer_email_addr,
+            buyer_chat_id,
+            tender.title,
+            current_user.full_name or current_user.email,
+            float(proposal_data.price),
+        )
+
     return proposal
 
 

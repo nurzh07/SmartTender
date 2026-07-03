@@ -2,6 +2,7 @@ from app.models.approval import ApprovalWorkflow
 from app.models.category import Category
 from app.models.department import Department
 from app.models.notification import Notification
+from app.models.payment import Payment
 from app.models.proposal import TenderProposal
 from app.models.report import Report
 from app.models.supplier_rating import SupplierRating
@@ -18,4 +19,5 @@ __all__ = [
     "Notification",
     "Report",
     "SupplierRating",
+    "Payment",
 ]

@@ -22,6 +22,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   buyer: "Сатып алушы (Buyer)",
   department_head: "Бөлім басшысы",
   employee: "Қызметкер",
+  procurement_manager: "Сатып алу менеджері",
   supplier: "Жеткізуші",
 };
 
@@ -174,29 +175,80 @@ export function TenderDetailPage() {
         </div>
       )}
 
-      <div className="card">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <h1 className="page-title" style={{ marginBottom: "0.5rem" }}>
-              {tender.title}
-            </h1>
-            <span className={`badge badge-${tender.status}`}>{tender.status}</span>
-            {tender.approval_status && tender.approval_status !== "draft" && (
-              <span className="badge badge-draft" style={{ marginLeft: "0.5rem" }}>
-                {tender.approval_status}
+      <div className="card" style={{
+        background: `linear-gradient(135deg, var(--surface) 0%, ${tender.status === 'published' ? 'rgba(16, 185, 129, 0.05)' : tender.status === 'awarded' ? 'rgba(245, 158, 11, 0.05)' : 'var(--surface)'} 100%)`,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
+              <h1 className="page-title" style={{ marginBottom: "0", fontSize: "1.5rem" }}>
+                {tender.title}
+              </h1>
+              <span 
+                className={`badge badge-${tender.status}`}
+                style={{ 
+                  padding: "0.4rem 0.75rem",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em"
+                }}
+              >
+                {tender.status === "published" ? "📋 Жарияланған" :
+                 tender.status === "draft" ? "📝 Жоба" :
+                 tender.status === "evaluation" ? "⚖️ Бағалау" :
+                 tender.status === "awarded" ? "🏆 Жеңімпаз" :
+                 tender.status === "closed" ? "🔒 Жабық" : tender.status}
               </span>
-            )}
+              {tender.approval_status && tender.approval_status !== "draft" && (
+                <span className="badge badge-draft" style={{ marginLeft: "0.5rem" }}>
+                  ✋ {tender.approval_status}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <p style={{ marginTop: "1rem", color: "var(--muted)" }}>{tender.description || "—"}</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem", marginTop: "1.5rem" }}>
+        <p style={{ 
+          marginTop: "0.5rem", 
+          color: "var(--text-secondary)", 
+          lineHeight: 1.6,
+          fontSize: "0.95rem"
+        }}>
+          {tender.description || "Сипаттама жоқ"}
+        </p>
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
+          gap: "1.5rem", 
+          marginTop: "1.5rem",
+          padding: "1rem",
+          background: "var(--surface2)",
+          borderRadius: "var(--radius)",
+          border: "1px solid var(--border)"
+        }}>
           <div>
-            <div className="label">Бюджет</div>
-            <strong>{Number(tender.budget).toLocaleString("kk-KZ")} ₸</strong>
+            <div className="label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              💰 Бюджет
+            </div>
+            <strong style={{ fontSize: "1.1rem", color: "var(--success)" }}>
+              {Number(tender.budget).toLocaleString("kk-KZ")} ₸
+            </strong>
           </div>
           <div>
-            <div className="label">Дедлайн</div>
-            <strong>{new Date(tender.deadline).toLocaleString("kk-KZ")}</strong>
+            <div className="label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              📅 Дедлайн
+            </div>
+            <strong style={{ fontSize: "1rem" }}>
+              {new Date(tender.deadline).toLocaleDateString("kk-KZ")}
+            </strong>
+          </div>
+          <div>
+            <div className="label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              👤 Жасаған
+            </div>
+            <strong style={{ fontSize: "1rem" }}>
+              {tender.created_by}
+            </strong>
           </div>
         </div>
 
@@ -374,34 +426,81 @@ export function TenderDetailPage() {
 
       {showProposals && (
         <div className="card">
-          <h2 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>
-            Ұсыныстар ({proposals.length})
+          <h2 style={{ 
+            fontSize: "1.1rem", 
+            marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem"
+          }}>
+            📝 Ұсыныстар ({proposals.length})
           </h2>
-          {proposals.map((p) => (
+          {proposals.map((p, index) => (
             <div
               key={p.id}
               style={{
-                padding: "0.85rem",
-                borderBottom: "1px solid var(--border)",
+                padding: "1rem",
+                borderBottom: proposals.length > index + 1 ? "1px solid var(--border)" : "none",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                background: index === 0 ? "var(--surface2)" : "transparent",
+                borderRadius: "var(--radius-sm)",
+                marginBottom: "0.25rem"
               }}
             >
-              <div>
-                <div>{p.supplier_name || `Жеткізуші #${p.supplier_id}`}</div>
-                <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-                  {Number(p.price).toLocaleString("kk-KZ")} ₸ · {p.delivery_days} күн
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  background: "var(--accent-light)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1rem"
+                }}>
+                  🏢
+                </div>
+                <div>
+                  <div style={{ fontWeight: "600", fontSize: "0.95rem" }}>
+                    {p.supplier_name || `Жеткізуші #${p.supplier_id}`}
+                  </div>
+                  <div style={{ color: "var(--muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                    💰 {Number(p.price).toLocaleString("kk-KZ")} ₸ · 📦 {p.delivery_days} күн
+                  </div>
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontWeight: 700, color: "var(--accent)" }}>Балл: {p.score}</div>
-                <span className="badge badge-published">{p.status}</span>
+                <div style={{ 
+                  fontWeight: "700", 
+                  color: p.score > 80 ? "var(--success)" : p.score > 50 ? "var(--warning)" : "var(--accent)",
+                  fontSize: "1.1rem"
+                }}>
+                  {p.score} балл
+                </div>
+                <span 
+                  className="badge badge-published"
+                  style={{ 
+                    marginTop: "0.25rem",
+                    padding: "0.25rem 0.5rem",
+                    fontSize: "0.7rem"
+                  }}
+                >
+                  {p.status}
+                </span>
               </div>
             </div>
           ))}
           {proposals.length === 0 && (
-            <p style={{ color: "var(--muted)" }}>Ұсыныстар жоқ</p>
+            <div style={{ 
+              textAlign: "center", 
+              padding: "2rem", 
+              color: "var(--muted)",
+              fontSize: "0.9rem"
+            }}>
+              📭 Ұсыныстар жоқ
+            </div>
           )}
         </div>
       )}

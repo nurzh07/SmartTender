@@ -8,6 +8,7 @@ import enum
 
 class TenderStatus(str, enum.Enum):
     DRAFT = "draft"
+    PAYMENT_PENDING = "payment_pending"   # Added for Stripe deposit flow
     PUBLISHED = "published"
     EVALUATION = "evaluation"
     AWARDED = "awarded"

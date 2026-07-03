@@ -15,9 +15,22 @@ export interface User {
   is_verified?: boolean;
   department_id: number | null;
   created_at: string;
+  // BIN verification
+  bin?: string | null;
+  bin_verified?: boolean;
+  company_official_name?: string | null;
+  company_registration_date?: string | null;
+  company_status?: string | null;
+  bin_verified_at?: string | null;
 }
 
-export type TenderStatus = "draft" | "published" | "evaluation" | "awarded" | "closed";
+export type TenderStatus =
+  | "draft"
+  | "payment_pending"
+  | "published"
+  | "evaluation"
+  | "awarded"
+  | "closed";
 
 export interface Tender {
   id: number;
@@ -77,4 +90,103 @@ export interface ApprovalStep {
   comment: string | null;
   approver_id: number | null;
   approved_at: string | null;
+}
+
+// ── Analytics types ──────────────────────────────────────────
+
+export interface MonthlyBar {
+  month: string;
+  month_label: string;
+  count: number;
+  budget?: number;
+}
+
+export interface StatusPie {
+  status: string;
+  count: number;
+  label: string;
+}
+
+export interface TopSupplier {
+  supplier_id: number;
+  supplier_name: string;
+  supplier_email: string;
+  total_proposals: number;
+  wins: number;
+  win_rate: number;
+}
+
+export interface TopBuyer {
+  buyer_id: number;
+  buyer_name: string;
+  buyer_email: string;
+  total_tenders: number;
+  total_budget: number;
+}
+
+export interface BuyerDashboard {
+  total_tenders_this_month: number;
+  total_tenders_last_month: number;
+  total_budget_awarded: number;
+  avg_proposals_per_tender: number;
+  top_suppliers: TopSupplier[];
+  status_distribution: StatusPie[];
+  monthly_activity: MonthlyBar[];
+}
+
+export interface SupplierDashboard {
+  total_proposals: number;
+  win_rate: number;
+  avg_own_price: number;
+  avg_market_price: number;
+  monthly_activity: MonthlyBar[];
+  wins_losses: StatusPie[];
+}
+
+export interface AdminDashboard {
+  total_users: number;
+  total_buyers: number;
+  total_suppliers: number;
+  total_tenders: number;
+  total_transaction_volume: number;
+  status_distribution: StatusPie[];
+  monthly_activity: MonthlyBar[];
+  top_buyers: TopBuyer[];
+  top_suppliers: TopSupplier[];
+}
+
+// ── Payment types ────────────────────────────────────────────
+
+export interface PaymentIntent {
+  payment_id: number;
+  tender_id: number;
+  client_secret: string;
+  payment_intent_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+}
+
+export interface PaymentStatus {
+  payment_id: number;
+  tender_id: number;
+  amount: number;
+  currency: string;
+  status: string;
+  stripe_payment_intent_id: string | null;
+  created_at: string;
+}
+
+// ── Telegram types ───────────────────────────────────────────
+
+export interface TelegramStatus {
+  linked: boolean;
+  telegram_chat_id: string | null;
+}
+
+export interface TelegramConnectCode {
+  code: string;
+  instructions: string;
+  command: string;
+  bot_link: string;
 }
