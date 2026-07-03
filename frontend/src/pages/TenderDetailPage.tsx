@@ -3,13 +3,17 @@ import { Link, useParams } from "react-router-dom";
 import {
   approveTender,
   createProposal,
+  deleteTender,
   getApproval,
   getProposals,
   getTender,
   publishTender,
   rejectTender,
   submitTender,
+  updateTenderStatus,
 } from "../api";
+import { RoleBanner } from "../components/RoleBanner";
+import { getRoleConfig } from "../roleConfig";
 import { useAuth } from "../context/AuthContext";
 import type { ApprovalStep, Proposal, Tender, UserRole } from "../types";
 
@@ -138,12 +142,37 @@ export function TenderDetailPage() {
   const showPublish = canPublish(user?.role, tender, user?.id);
   const showProposalForm = user?.role === "supplier" && tender.status === "published";
   const showProposals = canViewProposals(user?.role, tender, user?.id);
+  const roleConfig = user ? getRoleConfig(user.role) : null;
+
+  const canManageLifecycle =
+    user && ["buyer", "superadmin"].includes(user.role) && tender.status !== "draft";
+  const canDelete =
+    user &&
+    (user.role === "superadmin" ||
+      (tender.created_by === user.id && tender.status === "draft"));
 
   return (
     <div className="detail-grid">
       <Link to="/tenders" style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-        ← Тендерлерге қайту
+        ← Артқа
       </Link>
+
+      {user && <RoleBanner role={user.role} />}
+
+      {roleConfig && (
+        <div className="card role-hint">
+          <strong>Сіздің тапсырмаңыз:</strong>{" "}
+          {user?.role === "employee" && isOwner && showSubmit && "Өтінімді бекітуге жіберіңіз."}
+          {user?.role === "employee" && isOwner && isPendingApproval(tender) && "Бекіту нәтижесін күтіңіз."}
+          {user?.role === "department_head" && showApprove && "Өтінімді бекітіңіз немесе қабылдамаңыз."}
+          {user?.role === "buyer" && showApprove && "Қызметкер өтінімін бекітіңіз (2-қадам)."}
+          {user?.role === "buyer" && showPublish && "Тендерді жариялаңыз."}
+          {user?.role === "buyer" && tender.status === "published" && "Ұсыныстарды қараңыз, бағалауға өткізіңіз."}
+          {user?.role === "buyer" && tender.status === "evaluation" && "Жеңімпаз таңдаңыз."}
+          {user?.role === "supplier" && showProposalForm && "Коммерциялық ұсыныс жіберіңіз."}
+          {user?.role === "superadmin" && "Толық басқару құқығы."}
+        </div>
+      )}
 
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -218,6 +247,57 @@ export function TenderDetailPage() {
                 Қабылдамау
               </button>
             </>
+          )}
+          {canManageLifecycle && tender.status === "published" && proposals.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={busy}
+              onClick={() =>
+                runAction(() => updateTenderStatus(tenderId, "evaluation"), "Бағалау басталды")
+              }
+            >
+              Бағалауға өткізу
+            </button>
+          )}
+          {canManageLifecycle && ["published", "evaluation"].includes(tender.status) && proposals.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-success"
+              disabled={busy}
+              onClick={() =>
+                runAction(() => updateTenderStatus(tenderId, "awarded"), "Жеңімпаз таңдалды!")
+              }
+            >
+              Жеңімпаз таңдау
+            </button>
+          )}
+          {canManageLifecycle && tender.status === "awarded" && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={busy}
+              onClick={() => runAction(() => updateTenderStatus(tenderId, "closed"), "Тендер жабылды")}
+            >
+              Жабу
+            </button>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={busy}
+              onClick={() => {
+                if (window.confirm("Өшіресіз бе?")) {
+                  runAction(async () => {
+                    await deleteTender(tenderId);
+                    window.location.href = "/tenders";
+                  }, "Өшірілді");
+                }
+              }}
+            >
+              Өшіру
+            </button>
           )}
         </div>
 

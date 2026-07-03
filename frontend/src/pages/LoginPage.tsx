@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function LoginPage() {
@@ -55,6 +55,14 @@ export function LoginPage() {
             {submitting ? "Кіру..." : "Кіру"}
           </button>
         </form>
+        <div className="auth-link-row">
+          <Link to="/register">
+            Тіркелу (BUYER / SUPPLIER)
+          </Link>
+          <Link to="/forgot-password">
+            Құпия сөзді ұмыттым
+          </Link>
+        </div>
         <div className="demo-hint">
           <strong>Демо аккаунттар (5):</strong>
           <br />

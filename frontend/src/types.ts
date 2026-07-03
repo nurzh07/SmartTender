@@ -3,7 +3,8 @@ export type UserRole =
   | "buyer"
   | "department_head"
   | "employee"
-  | "supplier";
+  | "supplier"
+  | "procurement_manager";
 
 export interface User {
   id: number;

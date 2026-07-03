@@ -21,7 +21,7 @@ async def submit_for_approval(
 ):
     from app.models.tender import TenderStatus
 
-    allowed_roles = (UserRole.EMPLOYEE, UserRole.BUYER, UserRole.SUPERADMIN)
+    allowed_roles = (UserRole.EMPLOYEE, UserRole.SUPERADMIN)
     if current_user.role not in allowed_roles:
         raise HTTPException(status_code=403, detail="Сіздің рөліңіз бекітуге жіберуге рұқсат етілмеген")
 

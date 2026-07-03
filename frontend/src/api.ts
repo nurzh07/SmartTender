@@ -104,10 +104,21 @@ export const markNotificationRead = (id: number) =>
   api<Notification>(`/notifications/${id}/read`, { method: "PATCH" });
 
 export const publishTender = (id: number) =>
+  updateTenderStatus(id, "published");
+
+export const updateTenderStatus = (id: number, status: string) =>
   api<Tender>(`/tenders/${id}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status: "published" }),
+    body: JSON.stringify({ status }),
   });
+
+export const deleteTender = (id: number) =>
+  api<void>(`/tenders/${id}`, { method: "DELETE" });
+
+export const getUsers = () => api<User[]>("/users");
+
+export const updateUser = (id: number, body: Partial<Pick<User, "full_name" | "is_active"> & { role?: User["role"] }>) =>
+  api<User>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 
 export const getReports = () => api<Report[]>("/reports");
 
@@ -132,4 +143,15 @@ export const register = (body: {
   api<{ message: string; user: User }>("/auth/register", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+export const forgotPassword = (email: string) =>
+  api<{ message: string; reset_link?: string }> ("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+export const resetPassword = (token: string, newPassword: string) =>
+  api<{ message: string }> ("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, new_password: newPassword }),
   });

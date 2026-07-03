@@ -29,7 +29,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Опционал: docker compose --profile minio up -d  (USE_MINIO=true)
   smarttender_minio:
     profiles: ["minio"]
     image: minio/minio:latest
@@ -43,6 +42,18 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+
+  smarttender_mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: smarttender_mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8025/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   smarttender_frontend:
     build: ./frontend
@@ -69,6 +80,11 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:3000}
+      SMTP_HOST: ${SMTP_HOST:-host.docker.internal}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@smarttender.kz}
       UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
       USE_MINIO: ${USE_MINIO:-false}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-smarttender_minio:9000}
@@ -96,6 +112,11 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://smarttender:smarttender_pass@smarttender_db:5432/smarttender}
       REDIS_URL: ${REDIS_URL:-redis://smarttender_redis:6379/0}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      SMTP_HOST: ${SMTP_HOST:-host.docker.internal}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@smarttender.kz}
       UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
     depends_on:
       smarttender_db:

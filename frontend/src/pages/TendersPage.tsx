@@ -1,10 +1,18 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTender, getTenders } from "../api";
+import { RoleBanner } from "../components/RoleBanner";
 import { useAuth } from "../context/AuthContext";
-import type { Tender, TenderStatus } from "../types";
+import {
+  canCreateTender,
+  defaultStatusFilter,
+  filterTendersForRole,
+  rolePageSubtitle,
+  rolePageTitle,
+} from "../utils/tenderFilters";
+import type { Tender, TenderStatus, UserRole } from "../types";
 
-const STATUSES: { value: string; label: string }[] = [
+const ALL_STATUSES: { value: string; label: string }[] = [
   { value: "", label: "Барлығы" },
   { value: "draft", label: "Жоба" },
   { value: "published", label: "Жарияланған" },
@@ -13,28 +21,50 @@ const STATUSES: { value: string; label: string }[] = [
   { value: "closed", label: "Жабық" },
 ];
 
+const SUPPLIER_STATUSES = ALL_STATUSES.filter((s) => !s.value || s.value === "published");
+
+function statusesForRole(role: UserRole) {
+  if (role === "supplier") return SUPPLIER_STATUSES;
+  return ALL_STATUSES;
+}
+
 export function TendersPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const role = user?.role ?? "employee";
   const [tenders, setTenders] = useState<Tender[]>([]);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(defaultStatusFilter(role));
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState("");
 
-  const canCreate = user && ["employee", "buyer", "superadmin"].includes(user.role);
+  const canCreate = canCreateTender(role);
+  const createLabel = role === "employee" ? "+ Жаңа өтінім" : "+ Жаңа тендер";
 
   const load = () => {
     setLoading(true);
     getTenders(1, status || undefined)
-      .then(setTenders)
+      .then((data) => {
+        const scoped = user ? filterTendersForRole(data, role, user.id) : data;
+        if (role === "superadmin") {
+          setTenders(data);
+        } else if (role === "supplier") {
+          setTenders(scoped.filter((t) => !status || t.status === status));
+        } else {
+          setTenders(scoped);
+        }
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
+    setStatus(defaultStatusFilter(role));
+  }, [role]);
+
+  useEffect(() => {
     load();
-  }, [status]);
+  }, [status, user?.id]);
 
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,25 +85,28 @@ export function TendersPage() {
 
   return (
     <div>
-      <h1 className="page-title">Тендерлер</h1>
-      <p className="page-sub">Сатып алу өтінімдері мен жарияланған лоттар</p>
+      <h1 className="page-title">{rolePageTitle(role)}</h1>
+      <p className="page-sub">{rolePageSubtitle(role)}</p>
+      <RoleBanner role={role} />
 
       <div className="toolbar">
-        <select
-          className="input"
-          style={{ width: "auto", minWidth: "160px" }}
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          {STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        {role !== "employee" && (
+          <select
+            className="input"
+            style={{ width: "auto", minWidth: "160px" }}
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            {statusesForRole(role).map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        )}
         {canCreate && (
           <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
-            + Жаңа тендер
+            {createLabel}
           </button>
         )}
       </div>
@@ -99,6 +132,9 @@ export function TendersPage() {
               <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "0.35rem" }}>
                 {Number(t.budget).toLocaleString("kk-KZ")} ₸ · Дедлайн:{" "}
                 {new Date(t.deadline).toLocaleDateString("kk-KZ")}
+                {t.approval_status && t.approval_status !== "draft" && (
+                  <> · Бекіту: {t.approval_status}</>
+                )}
               </div>
             </div>
             <span className={`badge badge-${t.status as TenderStatus}`}>{t.status}</span>
@@ -108,14 +144,20 @@ export function TendersPage() {
 
       {!loading && tenders.length === 0 && (
         <p style={{ color: "var(--muted)", textAlign: "center", padding: "2rem" }}>
-          Тендерлер табылмады
+          {role === "employee"
+            ? "Өтінімдер жоқ. «Жаңа өтінім» батырмасы арқылы жасаңыз."
+            : role === "supplier"
+              ? "Ашық тендерлер жоқ."
+              : "Тендерлер табылмады"}
         </p>
       )}
 
       {showCreate && (
         <div className="modal-overlay" onClick={() => setShowCreate(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ marginBottom: "1rem" }}>Жаңа тендер</h2>
+            <h2 style={{ marginBottom: "1rem" }}>
+              {role === "employee" ? "Жаңа сатып алу өтінімі" : "Жаңа тендер"}
+            </h2>
             <form className="form-stack" onSubmit={handleCreate}>
               <div>
                 <label className="label">Атауы</label>

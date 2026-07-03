@@ -1,16 +1,10 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-const ROLE_LABELS: Record<string, string> = {
-  superadmin: "Әкімші",
-  buyer: "Сатып алушы (Buyer)",
-  department_head: "Бөлім басшысы",
-  employee: "Қызметкер",
-  supplier: "Жеткізуші",
-};
+import { getRoleConfig } from "../roleConfig";
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const config = getRoleConfig(user?.role ?? "employee");
 
   return (
     <div className="layout">
@@ -18,19 +12,23 @@ export function Layout() {
         <div className="sidebar-logo">
           Smart<span>Tender</span>
         </div>
+        {config && (
+          <div className="sidebar-role" style={{ borderColor: config.accent }}>
+            <div className="sidebar-role-label" style={{ color: config.accent }}>
+              {config.label}
+            </div>
+            <div className="sidebar-role-sub">{config.subtitle}</div>
+          </div>
+        )}
         <nav>
-          <NavLink to="/" end>
-            Басты бет
-          </NavLink>
-          <NavLink to="/tenders">Тендерлер</NavLink>
-          <NavLink to="/notifications">Хабарламалар</NavLink>
-          <NavLink to="/reports">Есептер</NavLink>
+          {config?.nav.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end}>
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
         <div style={{ marginTop: "auto", paddingTop: "1rem", fontSize: "0.85rem" }}>
           <div style={{ color: "var(--muted)" }}>{user?.full_name || user?.email}</div>
-          <div style={{ color: "var(--accent)", fontSize: "0.75rem" }}>
-            {user?.role && ROLE_LABELS[user.role]}
-          </div>
           <button
             type="button"
             className="btn btn-secondary"

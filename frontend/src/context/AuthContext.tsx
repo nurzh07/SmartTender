@@ -15,6 +15,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
+  register: (email: string, password: string, fullName: string, role: "buyer" | "supplier") => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -56,8 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const register = async (email: string, password: string, fullName: string, role: "buyer" | "supplier") => {
+    const { register: apiRegister } = await import("../api");
+    await apiRegister({ email, password, full_name: fullName, role });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refresh, register }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,7 +8,6 @@ from app.models.tender import Tender, TenderStatus
 from app.models.user import User, UserRole
 
 STEP_DEPARTMENT_HEAD = 1
-STEP_PROCUREMENT_MANAGER = 2
 
 
 def init_approval_workflow(db: Session, tender: Tender) -> list[ApprovalWorkflow]:
@@ -18,7 +17,6 @@ def init_approval_workflow(db: Session, tender: Tender) -> list[ApprovalWorkflow
 
     steps = [
         ApprovalWorkflow(tender_id=tender.id, step=STEP_DEPARTMENT_HEAD, status=ApprovalStatus.PENDING),
-        ApprovalWorkflow(tender_id=tender.id, step=STEP_PROCUREMENT_MANAGER, status=ApprovalStatus.PENDING),
     ]
     with db_transaction(db):
         db.add_all(steps)
@@ -41,7 +39,7 @@ def get_current_pending_step(db: Session, tender_id: int) -> ApprovalWorkflow | 
 def required_role_for_step(step: int) -> UserRole:
     if step == STEP_DEPARTMENT_HEAD:
         return UserRole.DEPARTMENT_HEAD
-    return UserRole.PROCUREMENT_MANAGER
+    raise ValueError(f"Unsupported approval step: {step}")
 
 
 def process_approval(

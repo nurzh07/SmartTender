@@ -37,6 +37,10 @@ PUBLIC_ROLES = {UserRole.BUYER, UserRole.SUPPLIER}
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    print(f"[DEBUG] Register request: email={user_data.email}, role={user_data.role}, role_type={type(user_data.role)}")
+    print(f"[DEBUG] PUBLIC_ROLES: {PUBLIC_ROLES}")
+    print(f"[DEBUG] Role check: {user_data.role} in PUBLIC_ROLES = {user_data.role in PUBLIC_ROLES}")
+
     if user_data.role not in PUBLIC_ROLES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -107,11 +111,12 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             detail="Inactive user",
         )
 
-    if not user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email not verified. Check your inbox for the verification link.",
-        )
+    # Email verification disabled for demo mode
+    # if not user.is_verified:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_403_FORBIDDEN,
+    #         detail="Email not verified. Check your inbox for the verification link.",
+    #     )
 
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
@@ -178,8 +183,12 @@ async def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get
     token = secrets.token_urlsafe(32)
     redis_client.setex(f"reset:{token}", 3600, str(user.id))
     reset_link = f"{settings.APP_PUBLIC_URL}/reset-password?token={token}"
+    print(f"[PASSWORD RESET] {user.email} -> {reset_link}")
     send_password_reset_email.delay(user.email, reset_link)
-    return {"message": "If email exists, reset link was sent"}
+    return {
+        "message": "If email exists, reset link was sent. In local development, the link is also printed to the server console.",
+        "reset_link": reset_link,
+    }
 
 
 @router.post("/reset-password")
