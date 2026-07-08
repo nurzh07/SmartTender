@@ -77,4 +77,5 @@ async def download_report(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report file not found")
 
     filename = os.path.basename(report.file_path)
-    return FileResponse(report.file_path, media_type="application/pdf", filename=filename)
+    media_type = "application/pdf" if report.file_type == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return FileResponse(report.file_path, media_type=media_type, filename=filename)

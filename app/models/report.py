@@ -9,6 +9,9 @@ class ReportType(str, enum.Enum):
     TENDER_SUMMARY = "tender_summary"
     SUPPLIER_PERFORMANCE = "supplier_performance"
     PROCUREMENT_REPORT = "procurement_report"
+    MONTHLY_TENDER_PDF = "monthly_tender_pdf"
+    SUPPLIER_RATINGS_EXCEL = "supplier_ratings_excel"
+    BUDGET_ANALYTICS = "budget_analytics"
 
 
 class ReportStatus(str, enum.Enum):
