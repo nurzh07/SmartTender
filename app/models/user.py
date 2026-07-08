@@ -47,3 +47,4 @@ class User(Base):
         back_populates="users",
         foreign_keys=[department_id],
     )
+    watchlist = relationship("TenderWatchlist", back_populates="user")

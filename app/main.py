@@ -11,10 +11,13 @@ from app.api import (
     categories,
     departments,
     integrations,
+    monitoring,
     notifications,
     odoo,
     payments,
+    permissions,
     proposals,
+    ratings,
     reports,
     suppliers,
     tenders,
@@ -120,6 +123,9 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"]
 app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
 app.include_router(telegram.router, prefix="/api/telegram", tags=["telegram"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
+app.include_router(monitoring.router, prefix="/api/monitoring", tags=["monitoring"])
+app.include_router(ratings.router, prefix="/api/ratings", tags=["ratings"])
+app.include_router(permissions.router, prefix="/api/permissions", tags=["permissions"])
 
 
 @app.get("/")

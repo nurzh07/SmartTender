@@ -102,6 +102,22 @@ def send_verification_email(email: str, verify_link: str) -> dict:
 
 
 @celery_app.task
+def send_welcome_email(email: str, username: str) -> dict:
+    """Welcome email after successful registration"""
+    subject = "SmartTender — Тіркелу сәтті өтті!"
+    message = (
+        f"Сәлем, {username}!\n\n"
+        "Сіз SmartTender платформасына сәтті тіркелдіңіз.\n"
+        "Біздің платформада тендерлерге қатысу, ұсыныстар жіберу және "
+        "басқа да мүмкіндіктерді пайдалана аласыз.\n\n"
+        "Платформаға кіру үшін: http://localhost:3000/login\n\n"
+        "Сұрақтарыңыз болса, бізге хабарласыңыз.\n\n"
+        "SmartTender командасы"
+    )
+    return _deliver_email(email, subject, message)
+
+
+@celery_app.task
 def send_tender_published_email(supplier_emails: list[str], tender_title: str, tender_id: int) -> dict:
     """Tender published → email to ALL suppliers"""
     subject = f"SmartTender — Жаңа тендер: {tender_title}"
@@ -134,7 +150,9 @@ def send_new_proposal_email(buyer_email: str, tender_title: str, supplier_name: 
 
 @celery_app.task
 def send_deadline_reminder_3days(recipient_emails: list[str], tender_title: str, deadline: str) -> dict:
-    """Deadline -3 days → reminder to buyer + all participants"""
+    """Deadline -3 days -> reminder to buyer + all participants"""
+    from app.services.email_utils import send_deadline_reminder_email as send_deadline_reminder_email_resend
+    
     subject = f"SmartTender — Дедлайн ескерту (3 күн қалды): {tender_title}"
     message = (
         f"Тендер дедлайнына 3 күн қалды:\n"
@@ -147,12 +165,17 @@ def send_deadline_reminder_3days(recipient_emails: list[str], tender_title: str,
         result = _deliver_email(email, subject, message)
         if result["status"] == "sent":
             sent_count += 1
+        
+        # Send with Resend
+        send_deadline_reminder_email_resend(email, tender_title, deadline, 3)
     return {"status": "completed", "sent": sent_count, "total": len(recipient_emails)}
 
 
 @celery_app.task
 def send_deadline_reminder_1day(recipient_emails: list[str], tender_title: str, deadline: str) -> dict:
-    """Deadline -1 day → final reminder"""
+    """Deadline -1 day -> final reminder"""
+    from app.services.email_utils import send_deadline_reminder_email as send_deadline_reminder_email_resend
+    
     subject = f"SmartTender — Дедлайн ескерту (1 күн қалды): {tender_title}"
     message = (
         f"Тендер дедлайнына 1 күн қалды:\n"
@@ -165,6 +188,9 @@ def send_deadline_reminder_1day(recipient_emails: list[str], tender_title: str, 
         result = _deliver_email(email, subject, message)
         if result["status"] == "sent":
             sent_count += 1
+        
+        # Send with Resend
+        send_deadline_reminder_email_resend(email, tender_title, deadline, 1)
     return {"status": "completed", "sent": sent_count, "total": len(recipient_emails)}
 
 

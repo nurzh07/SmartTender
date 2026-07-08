@@ -119,6 +119,114 @@ export const updateUser = (
 
 export const deleteUser = (id: number) => api<void>(`/users/${id}`, { method: "DELETE" });
 
+// ── Monitoring API ───────────────────────────────────────────
+export const getExternalTenders = (params?: {
+  category?: string;
+  region?: string;
+  min_price?: number;
+  max_price?: number;
+}) => api<any>("/monitoring/external-tenders", { method: "GET" });
+
+export const addToWatchlist = (tenderId: string, source: string) =>
+  api<any>("/monitoring/watchlist", {
+    method: "POST",
+    body: JSON.stringify({ tender_id: tenderId, source }),
+  });
+
+export const getWatchlist = () => api<any>("/monitoring/watchlist");
+
+export const removeFromWatchlist = (watchlistId: number) =>
+  api<void>(`/monitoring/watchlist/${watchlistId}`, { method: "DELETE" });
+
+export const getMonitoringCategories = () => api<any>("/monitoring/categories");
+
+export const getMonitoringRegions = () => api<any>("/monitoring/regions");
+
+// ── Ratings API ─────────────────────────────────────────────
+export const createRating = (data: {
+  tender_id: number;
+  supplier_id: number;
+  quality_score: number;
+  delivery_score: number;
+  communication_score: number;
+  price_score: number;
+  review?: string;
+}) => api<any>("/ratings/ratings", {
+  method: "POST",
+  body: JSON.stringify(data),
+});
+
+export const getSupplierRatings = (supplierId: number) =>
+  api<any>(`/ratings/ratings/supplier/${supplierId}`);
+
+export const getSupplierAverageRating = (supplierId: number) =>
+  api<any>(`/ratings/ratings/supplier/${supplierId}/average`);
+
+export const createPortfolio = (data: {
+  project_name: string;
+  project_description?: string;
+  project_value?: number;
+  completion_date?: string;
+  client_name?: string;
+  client_contact?: string;
+  documents?: string;
+}) => api<any>("/ratings/portfolio", {
+  method: "POST",
+  body: JSON.stringify(data),
+});
+
+export const getMyPortfolio = () => api<any>("/ratings/portfolio/my");
+
+export const updatePortfolio = (portfolioId: number, data: any) =>
+  api<any>(`/ratings/portfolio/${portfolioId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deletePortfolio = (portfolioId: number) =>
+  api<void>(`/ratings/portfolio/${portfolioId}`, { method: "DELETE" });
+
+export const createCertification = (data: {
+  certification_name: string;
+  issuing_organization: string;
+  certificate_number?: string;
+  issue_date?: string;
+  expiry_date?: string;
+  document_url?: string;
+}) => api<any>("/ratings/certifications", {
+  method: "POST",
+  body: JSON.stringify(data),
+});
+
+export const getMyCertifications = () => api<any>("/ratings/certifications/my");
+
+export const deleteCertification = (certificationId: number) =>
+  api<void>(`/ratings/certifications/${certificationId}`, { method: "DELETE" });
+
+// ── Permissions API ─────────────────────────────────────────
+export const getMyPermissions = () => api<any>("/permissions/my");
+
+export const checkPermission = (permissionName: string) =>
+  api<any>(`/permissions/check/${permissionName}`);
+
+export const initializePermissions = () =>
+  api<any>("/permissions/initialize", { method: "POST" });
+
+export const grantRolePermission = (role: string, permissionName: string) =>
+  api<any>("/permissions/role/grant", {
+    method: "POST",
+    body: JSON.stringify({ role, permission_name: permissionName }),
+  });
+
+export const revokeRolePermission = (role: string, permissionName: string) =>
+  api<any>("/permissions/role/revoke", {
+    method: "POST",
+    body: JSON.stringify({ role, permission_name: permissionName }),
+  });
+
+export const getRolePermissions = (role: string) =>
+  api<any>(`/permissions/role/${role}`);
+
 // ── Tenders ──────────────────────────────────────────────────
 
 export const getTenders = (page = 1, status?: string) => {

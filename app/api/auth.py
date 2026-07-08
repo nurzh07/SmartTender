@@ -1,3 +1,4 @@
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,9 +20,11 @@ from app.schemas.user import (
     UserResponse,
     VerifyEmailRequest,
 )
-from app.tasks.email_tasks import send_password_reset_email, send_verification_email
+from app.tasks.email_tasks import send_password_reset_email, send_verification_email, send_welcome_email
+from app.services.email_utils import send_welcome_email as send_welcome_email_resend, send_password_reset_email as send_password_reset_email_resend, send_verification_email as send_verification_email_resend
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 from app.core.security import (
     verify_password,
     get_password_hash,
@@ -111,6 +114,10 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     redis_client.setex(f"verify:{token}", 86400, str(new_user.id))
     verify_link = f"{settings.APP_PUBLIC_URL}/verify-email?token={token}"
     send_verification_email.delay(new_user.email, verify_link)
+    
+    # Send welcome email and verification email using Resend
+    send_verification_email_resend(new_user.email, verify_link)
+    send_welcome_email_resend(new_user.email, new_user.full_name or new_user.email)
 
     return RegisterResponse(
         message="Registration successful. Check your email to verify your account.",
@@ -133,6 +140,7 @@ async def verify_email(body: VerifyEmailRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     redis_client.delete(f"verify:{body.token}")
+    
     return user
 
 
@@ -226,6 +234,8 @@ async def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get
     reset_link = f"{settings.APP_PUBLIC_URL}/reset-password?token={token}"
     print(f"[PASSWORD RESET] {user.email} -> {reset_link}")
     send_password_reset_email.delay(user.email, reset_link)
+    # Send password reset email using Resend
+    send_password_reset_email_resend(user.email, reset_link)
     return {
         "message": "If email exists, reset link was sent. In local development, the link is also printed to the server console.",
         "reset_link": reset_link,

@@ -27,6 +27,8 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
     nav: [
       { to: "/", label: "🏠 Басты бет", end: true },
       { to: "/tenders", label: "📋 Ашық тендерлер" },
+      { to: "/monitoring", label: "🔍 Тендер мониторингі" },
+      { to: "/ratings", label: "⭐ Рейтинг жүйесі" },
       { to: "/analytics", label: "📊 Аналитика" },
     ],
   },
@@ -43,6 +45,8 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
     nav: [
       { to: "/", label: "🏠 Басты бет", end: true },
       { to: "/tenders", label: "📋 Тендерлер" },
+      { to: "/monitoring", label: "🔍 Тендер мониторингі" },
+      { to: "/ratings", label: "⭐ Рейтинг жүйесі" },
       { to: "/analytics", label: "📊 Аналитика" },
       { to: "/reports", label: "📄 Есептер" },
     ],
@@ -59,6 +63,7 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
     nav: [
       { to: "/", label: "Басты бет", end: true },
       { to: "/tenders", label: "Менің өтінімдерім" },
+      { to: "/monitoring", label: "🔍 Тендер мониторингі" },
     ],
   },
   department_head: {
@@ -73,6 +78,7 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
     nav: [
       { to: "/", label: "Басты бет", end: true },
       { to: "/approvals", label: "Бекіту кезегі" },
+      { to: "/monitoring", label: "🔍 Тендер мониторингі" },
     ],
   },
   procurement_manager: {
@@ -88,6 +94,8 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
       { to: "/", label: "Басты бет", end: true },
       { to: "/tenders", label: "Тендерлер" },
       { to: "/approvals", label: "Жариялау кезегі" },
+      { to: "/monitoring", label: "🔍 Тендер мониторингі" },
+      { to: "/ratings", label: "⭐ Рейтинг жүйесі" },
     ],
   },
   superadmin: {
@@ -103,6 +111,9 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
       { to: "/", label: "🏠 Басты бет", end: true },
       { to: "/users", label: "👥 Пайдаланушылар" },
       { to: "/tenders", label: "📋 Тендерлер" },
+      { to: "/monitoring", label: "🔍 Тендер мониторингі" },
+      { to: "/ratings", label: "⭐ Рейтинг жүйесі" },
+      { to: "/permissions", label: "🔐 Рөлдік құқықтар" },
       { to: "/analytics", label: "📊 Аналитика" },
       { to: "/reports", label: "📄 Есептер" },
       { to: "/notifications", label: "🔔 Хабарламалар" },

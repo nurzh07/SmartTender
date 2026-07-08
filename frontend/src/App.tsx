@@ -8,7 +8,10 @@ import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { LoginPage } from "./pages/LoginPage";
+import MonitoringPage from "./pages/MonitoringPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import { PermissionsPage } from "./pages/PermissionsPage";
+import { RatingsPage } from "./pages/RatingsPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
@@ -60,6 +63,9 @@ export default function App() {
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="monitoring" element={<MonitoringPage />} />
+          <Route path="ratings" element={<RatingsPage />} />
+          <Route path="permissions" element={<PermissionsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
