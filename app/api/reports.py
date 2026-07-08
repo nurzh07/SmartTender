@@ -1,108 +1,80 @@
-from pathlib import Path
-
-from fastapi import APIRouter, Depends, HTTPException
+import os
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-
-from app.config import get_settings
-from app.core.deps import get_current_active_user
-from app.core.rbac import require_roles
 from app.database import get_db
-from app.models.report import Report, ReportType
-from app.models.user import User, UserRole
-from app.schemas.report import ReportGenerateRequest, ReportResponse
-from app.tasks.report_tasks import generate_monthly_pdf_report, generate_supplier_ratings_excel
-
-router = APIRouter()
-settings = get_settings()
+from app.models.report import Report, ReportStatus
+from app.schemas.report import ReportCreate, ReportResponse
+from app.core.deps import get_current_user
+from app.models.user import User
+from app.tasks.report_tasks import generate_report_task
 
 
-@router.post("/generate", response_model=dict)
+router = APIRouter(prefix="/reports", tags=["Reports"])
+
+
+@router.post("/generate", response_model=ReportResponse)
 async def generate_report(
-    body: ReportGenerateRequest,
-    current_user: User = Depends(
-        require_roles(UserRole.BUYER, UserRole.SUPERADMIN)
-    ),
+    report_data: ReportCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    from app.tasks.report_tasks import generate_budget_analytics
-    
-    if body.report_type == ReportType.MONTHLY_TENDERS_PDF:
-        task = generate_monthly_pdf_report.delay(body.period, current_user.id)
-    elif body.report_type == ReportType.SUPPLIER_RATINGS_EXCEL:
-        task = generate_supplier_ratings_excel.delay(body.period, current_user.id)
-    elif body.report_type == ReportType.BUDGET_ANALYTICS:
-        task = generate_budget_analytics.delay(body.period, current_user.id)
-    else:
-        task = generate_monthly_pdf_report.delay(body.period, current_user.id)
-    return {"task_id": task.id, "status": "queued", "report_type": body.report_type.value}
+    report = Report(
+        title=report_data.title,
+        type=report_data.type,
+        created_by_id=current_user.id,
+        status=ReportStatus.PENDING,
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+
+    # Запускаем Celery задачу
+    generate_report_task.delay(report.id)
+
+    return report
 
 
-@router.get("", response_model=list[ReportResponse])
-async def list_reports(
-    current_user: User = Depends(get_current_active_user),
+@router.get("/", response_model=list[ReportResponse])
+async def get_reports(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    return db.query(Report).order_by(Report.created_at.desc()).limit(20).all()
-
-
-def _can_access_report(current_user: User, report: Report) -> bool:
-    return current_user.role in (
-        UserRole.SUPERADMIN,
-        UserRole.BUYER,
-    ) or report.generated_by == current_user.id
+    reports = db.query(Report).filter(Report.created_by_id == current_user.id).all()
+    return reports
 
 
 @router.get("/{report_id}", response_model=ReportResponse)
 async def get_report(
     report_id: int,
-    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    report = db.query(Report).filter(Report.id == report_id).first()
+    report = db.query(Report).filter(
+        Report.id == report_id,
+        Report.created_by_id == current_user.id
+    ).first()
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-    if not _can_access_report(current_user, report):
-        raise HTTPException(status_code=403, detail="Not authorized to view this report")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     return report
 
 
 @router.get("/{report_id}/download")
 async def download_report(
     report_id: int,
-    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    report = db.query(Report).filter(Report.id == report_id).first()
-    if not report or not report.file_url:
-        raise HTTPException(status_code=404, detail="Report file not found")
-    if not _can_access_report(current_user, report):
-        raise HTTPException(status_code=403, detail="Not authorized to download this report")
-
-    if report.file_url.startswith("/api/reports/files/"):
-        filename = report.file_url.split("/")[-1]
-        path = Path(settings.UPLOAD_DIR) / "reports" / filename
-        if not path.exists():
-            raise HTTPException(status_code=404, detail="File missing on disk")
-        return FileResponse(path, filename=filename)
-
-    raise HTTPException(status_code=400, detail="File stored externally; use file_url")
-
-
-@router.get("/files/{filename}")
-async def serve_report_file(
-    filename: str,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    safe_filename = filename.replace("..", "")
-    report = db.query(Report).filter(Report.file_url == f"/api/reports/files/{safe_filename}").first()
+    report = db.query(Report).filter(
+        Report.id == report_id,
+        Report.created_by_id == current_user.id
+    ).first()
     if not report:
-        raise HTTPException(status_code=404, detail="Report metadata not found")
-    if not _can_access_report(current_user, report):
-        raise HTTPException(status_code=403, detail="Not authorized to access this report file")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    if report.status != ReportStatus.COMPLETED:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Report not ready yet")
+    if not report.file_path or not os.path.exists(report.file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report file not found")
 
-    path = Path(settings.UPLOAD_DIR) / "reports" / safe_filename
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path, filename=safe_filename)
+    filename = os.path.basename(report.file_path)
+    return FileResponse(report.file_path, media_type="application/pdf", filename=filename)

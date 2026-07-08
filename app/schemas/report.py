@@ -1,22 +1,25 @@
-from datetime import datetime
-
 from pydantic import BaseModel
-
-from app.models.report import ReportType
-
-
-class ReportGenerateRequest(BaseModel):
-    report_type: ReportType
-    period: str
+from datetime import datetime
+from app.models.report import ReportType, ReportStatus
 
 
-class ReportResponse(BaseModel):
+class ReportBase(BaseModel):
+    title: str
+    type: ReportType
+
+
+class ReportCreate(ReportBase):
+    pass
+
+
+class ReportResponse(ReportBase):
     id: int
-    report_type: ReportType
-    period: str
-    file_url: str | None
-    generated_by: int | None
+    status: ReportStatus
+    file_path: str | None
+    file_type: str | None
+    created_by_id: int
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

@@ -48,3 +48,4 @@ class User(Base):
         foreign_keys=[department_id],
     )
     watchlist = relationship("TenderWatchlist", back_populates="user")
+    reports = relationship("Report", back_populates="created_by")

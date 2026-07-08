@@ -1,27 +1,34 @@
-import enum
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-
 from app.database import Base
-from app.models.enums import pg_enum
+import enum
 
 
 class ReportType(str, enum.Enum):
-    MONTHLY_TENDERS_PDF = "monthly_tenders_pdf"
-    SUPPLIER_RATINGS_EXCEL = "supplier_ratings_excel"
-    BUDGET_ANALYTICS = "budget_analytics"
+    TENDER_SUMMARY = "tender_summary"
+    SUPPLIER_PERFORMANCE = "supplier_performance"
+    PROCUREMENT_REPORT = "procurement_report"
+
+
+class ReportStatus(str, enum.Enum):
+    PENDING = "pending"
+    GENERATING = "generating"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class Report(Base):
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
-    report_type = Column(pg_enum(ReportType, "reporttype"), nullable=False)
-    period = Column(String, nullable=False)
-    file_url = Column(String)
-    generated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    title = Column(String, index=True)
+    type = Column(SQLEnum(ReportType), index=True)
+    status = Column(SQLEnum(ReportStatus), default=ReportStatus.PENDING)
+    file_path = Column(String, nullable=True)
+    file_type = Column(String, nullable=True)  # pdf, xlsx
+    created_by_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    generator = relationship("User")
+    created_by = relationship("User", back_populates="reports")
