@@ -294,11 +294,46 @@ export const markNotificationRead = (id: number) =>
 
 export const getReports = () => api<Report[]>("/reports");
 
-export const generateReport = (report_type: ReportType, period: string) =>
-  api<{ task_id: string; status: string; report_type: string }>("/reports/generate", {
+export const generateReport = (type: ReportType, title?: string) => {
+  const defaultTitle = (t: ReportType) => {
+    switch (t) {
+      case "monthly_tender_pdf": return "Айлық тендер PDF";
+      case "supplier_ratings_excel": return "Жеткізуші рейтингтері Excel";
+      case "budget_analytics": return "Бюджет аналитикасы";
+      case "tender_summary": return "Тендер қорытамасы";
+      case "supplier_performance": return "Жеткізуші өнімділігі";
+      case "procurement_report": return "Сатып алу есебі";
+      default: return "Есеп";
+    }
+  };
+  return api<Report>("/reports/generate", {
     method: "POST",
-    body: JSON.stringify({ report_type, period }),
+    body: JSON.stringify({ type, title: title || defaultTitle(type) }),
   });
+};
+
+export const downloadReport = async (reportId: number) => {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`/api/reports/${reportId}/download`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) throw new Error("Жүктеу сәтсіз");
+  const blob = await res.blob();
+  const contentDisposition = res.headers.get("Content-Disposition");
+  const filename = contentDisposition
+    ? contentDisposition.split("filename=")[1].replace(/"/g, "")
+    : `report-${reportId}`;
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
 
 // ── Analytics ────────────────────────────────────────────────
 

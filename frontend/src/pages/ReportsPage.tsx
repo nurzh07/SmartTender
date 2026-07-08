@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { generateReport, getReports } from "../api";
+import { generateReport, getReports, downloadReport } from "../api";
 import { useAuth } from "../context/AuthContext";
 import type { Report, ReportType } from "../types";
 
 const REPORT_LABELS: Record<ReportType, string> = {
-  monthly_tenders_pdf: "Айлық тендер PDF",
+  monthly_tender_pdf: "Айлық тендер PDF",
   supplier_ratings_excel: "Жеткізуші рейтингтері Excel",
   budget_analytics: "Бюджет аналитикасы",
+  tender_summary: "Тендер қорытамасы",
+  supplier_performance: "Жеткізуші өнімділігі",
+  procurement_report: "Сатып алу есебі",
 };
 
 export function ReportsPage() {
@@ -14,11 +17,12 @@ export function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
 
   const canGenerate =
-    user?.role === "buyer" || user?.role === "superadmin";
+    user?.role === "buyer" || user?.role === "superadmin" || user?.role === "procurement_manager";
 
   const loadReports = useCallback(async () => {
     try {
@@ -41,10 +45,9 @@ export function ReportsPage() {
     setBusy(true);
     setError("");
     setMsg("");
-    const period = new Date().toISOString().slice(0, 7);
     try {
-      const result = await generateReport(type, period);
-      setMsg(`Есеп фонда құрылуда (task: ${result.task_id.slice(0, 8)}…)`);
+      await generateReport(type);
+      setMsg("Есеп фонда құрылуда...");
       // Celery тапсырмасы аяқталғанша бірнеше рет жаңарту
       for (const delay of [2000, 3000, 5000]) {
         await new Promise((r) => setTimeout(r, delay));
@@ -58,6 +61,32 @@ export function ReportsPage() {
     }
   };
 
+  const handleDownload = async (report: Report) => {
+    if (report.status !== "completed") {
+      setMsg("Есеп әлі дайын емес");
+      return;
+    }
+    setDownloading(report.id);
+    try {
+      await downloadReport(report.id);
+      setMsg("Есеп сәтті жүктелді");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Жүктеу қатесі");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "pending": return "Күтуде";
+      case "generating": return "Құрылуда";
+      case "completed": return "Дайын";
+      case "failed": return "Қате";
+      default: return status;
+    }
+  };
+
   return (
     <div>
       <h1 className="page-title">Есептер</h1>
@@ -67,7 +96,9 @@ export function ReportsPage() {
         <div className="card" style={{ marginBottom: "1.5rem" }}>
           <h2 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>Жаңа есеп құру</h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-            {(Object.keys(REPORT_LABELS) as ReportType[]).map((type) => (
+            {(Object.keys(REPORT_LABELS) as ReportType[])
+              .filter(t => ["monthly_tender_pdf", "supplier_ratings_excel", "budget_analytics"].includes(t))
+              .map((type) => (
               <button
                 key={type}
                 type="button"
@@ -111,23 +142,25 @@ export function ReportsPage() {
               }}
             >
               <div>
-                <strong>{REPORT_LABELS[report.report_type] || report.report_type}</strong>
+                <strong>{report.title || REPORT_LABELS[report.type] || report.type}</strong>
                 <div style={{ color: "var(--muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>
-                  Период: {report.period} ·{" "}
+                  Статус: {getStatusText(report.status)} ·{" "}
                   {new Date(report.created_at).toLocaleString("kk-KZ")}
                 </div>
               </div>
-              {report.file_url ? (
-                <a
-                  href={report.file_url}
+              {report.status === "completed" ? (
+                <button
+                  onClick={() => handleDownload(report)}
+                  disabled={downloading === report.id}
                   className="btn btn-secondary"
-                  style={{ textDecoration: "none", fontSize: "0.85rem" }}
-                  download
+                  style={{ fontSize: "0.85rem" }}
                 >
-                  Жүктеу
-                </a>
+                  {downloading === report.id ? "Жүктелуде..." : "Жүктеу"}
+                </button>
               ) : (
-                <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>Файл жоқ</span>
+                <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+                  {getStatusText(report.status)}
+                </span>
               )}
             </div>
           ))}

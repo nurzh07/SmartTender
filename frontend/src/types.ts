@@ -69,17 +69,25 @@ export interface Notification {
 }
 
 export type ReportType =
-  | "monthly_tenders_pdf"
+  | "tender_summary"
+  | "supplier_performance"
+  | "procurement_report"
+  | "monthly_tender_pdf"
   | "supplier_ratings_excel"
   | "budget_analytics";
 
+export type ReportStatus = "pending" | "generating" | "completed" | "failed";
+
 export interface Report {
   id: number;
-  report_type: ReportType;
-  period: string;
-  file_url: string | null;
-  generated_by: number | null;
+  title: string;
+  type: ReportType;
+  status: ReportStatus;
+  file_path: string | null;
+  file_type: string | null;
+  created_by_id: number;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ApprovalStep {
